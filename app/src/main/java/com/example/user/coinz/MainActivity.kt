@@ -1,7 +1,7 @@
 package com.example.user.coinz
 
-import android.annotation.SuppressLint
-import android.app.Service
+
+import kotlinx.android.synthetic.main.activity_main.* //for fab,toolbar
 import android.content.Context
 import android.os.Bundle
 import android.support.design.widget.Snackbar
@@ -12,7 +12,7 @@ import android.os.AsyncTask
 import android.util.Log
 
 
-import kotlinx.android.synthetic.main.activity_main.*
+
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
@@ -21,17 +21,19 @@ import java.util.Calendar
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import android.content.Intent
+import android.location.Location
+import android.os.PersistableBundle
+import kotlinx.android.synthetic.main.content_main.*
 import java.time.LocalDate //api26++ no local date but got date test bonus feature
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 
 
 
+//, OnMapReadyCallback,
+//LocationEngineListener, PermissionsListener
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(){
 
     private val tag = "MainActivity"
     private var downloadDate = ""
@@ -41,49 +43,22 @@ class MainActivity : AppCompatActivity() {
 
 
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         setSupportActionBar(toolbar)
 
         fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                     .setAction("Action", null).show()
+            val intent = Intent(this, MapActivity::class.java)
+            startActivity(intent)
         }
 
 
-
-
-
-/**
-        val filename = "myfile1"
-        val fileContents = "Hello world!"
-        applicationContext.openFileOutput(filename, Context.MODE_PRIVATE).use {
-        it.write(fileContents.toByteArray())
-        }
-         **/
-        //JSONObject person = (JSONObject) o
-        //JSONObject rates = (JSONObject) o
-        //val name = person.get("name") as String
-        //val name = person.get("name") as String
-    }
-
-    override fun onStart()
-    {
-        super.onStart()
-        /**
-        val currentTime = Calendar.getInstance()
-        val dateFormat = SimpleDateFormat("yyyy/MM/dd")
-        val formattedDate = dateFormat.format(currentTime)
-        println("currenttime = $formattedDate")
-
-        val date = Calendar.getInstance().time
-        val dateFormat = SimpleDateFormat("yyyy-mm-dd hh:mm:ss")
-        //val strDate = dateFormat.format(date)
-        val downloadDate = dateFormat.format(date)
-        //Log.d(tag,"Converted String: $strDate")
-
-**/
         //11.59-12am transition and download new map
         val date = Calendar.getInstance().time
         val dateFormat = SimpleDateFormat("yyyy/MM/dd")
@@ -95,36 +70,49 @@ class MainActivity : AppCompatActivity() {
         // use ”” as the default value (this might be the first time the app is run)
         downloadDate = settings.getString("lastDownloadDate","")
         // Write a message to ”logcat” (for debugging purposes)
+        //downloadDate = "2018/10/07"  //test to force download map
         Log.d(tag,"[onStart] Recalled lastDownloadDate is $downloadDate")
 
-        if (!currentDate.equals(downloadDate)){
-            //if dates are diff then download map from server, write geojson to device,update downloadDate value
+        //file that stores the map
+        if (currentDate!= downloadDate){
+            //if dates are diff then download map from server, write geojson to device in onPostExecute,update downloadDate value
             val asyncDownload = DownloadFileTask(DownloadCompleteRunner)
             asyncDownload.execute("http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson")
-
-            val file = File(applicationContext.filesDir, "coinzmap.geojson")
-            file.writeText(DownloadCompleteRunner.result + "")
-
             downloadDate = currentDate
+
+
         }
+
+/**
+        val filename = "myfile1"
+        val fileContents = "Hello world!"
+        applicationContext.openFileOutput(filename, Context.MODE_PRIVATE).use {
+        it.write(fileContents.toByteArray())
+        }
+         **/
+
+    }
+
+    @SuppressWarnings("MissingPermission")
+    override fun onStart()
+    {
+        super.onStart()
+
+
 
 
     }
-    override fun onStop()
+
+    override fun onResume()
     {
-        super.onStop()
-        //if device date - "bonus" date stored in cloud != 1 OR streak = 7 && bonus received, then restart streak, reset streak
-        // bonus received:bool, streak:int
+        super.onResume()
+    }
 
 
-/**
-        val dtf = SimpleDateFormat("yyyy/MM/dd")
-        val localDate = LocalDate.now()
-        val downloadDate= dtf.format(localDate)
-        //System.out.println("WWWWWWW" + dtf.format(localDate))
-**/
-        //downloadDate = "2018/10/07"  test to force download map
-        Log.d(tag,"[onStop] Storing lastDownloadDate of $downloadDate")
+    override fun onPause()
+    {
+        super.onPause()
+        Log.d(tag,"[onPause] Storing lastDownloadDate of $downloadDate")
         // All objects are from android.context.Context
         val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
         // We need an Editor object to make preference changes.
@@ -134,12 +122,59 @@ class MainActivity : AppCompatActivity() {
         editor.apply()
     }
 
+
+    override fun onStop()
+    {
+        super.onStop()
+        //if device date - "bonus" date stored in cloud != 1 OR streak = 7 && bonus received, then restart streak, reset streak
+        // bonus received:int"increases during first write", streak:int,streak == #getbonus,then bonus received
+        // streak is getbonus?
+
+/**
+        val dtf = SimpleDateFormat("yyyy/MM/dd")
+        val localDate = LocalDate.now()
+        val downloadDate= dtf.format(localDate)
+        //System.out.println("WWWWWWW" + dtf.format(localDate))
+**/
+
+
+
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     object DownloadCompleteRunner : DownloadCompleteListener {
         var result : String? = null
         override fun downloadComplete(result: String) {
             this.result = result
-            //Log.d("tag",DownloadCompleteRunner.result)
         }
+
     }
     class DownloadFileTask(private val caller : DownloadCompleteListener) : AsyncTask<String, Void, String>() {
         override fun doInBackground(vararg urls: String): String =
@@ -177,9 +212,20 @@ class MainActivity : AppCompatActivity() {
         override fun onPostExecute(result: String) {
             super.onPostExecute(result)
             caller.downloadComplete(result)
+            val file = File("/data/data/com.example.user.coinz/files","coinzmap.geojson")
+            file.writeText(DownloadCompleteRunner.result + "")
+            //new day new wallet
+            val file2 = File("/data/data/com.example.user.coinz/files","wallet.txt")
+            file2.writeText("")
+            println(file2.readText())
 
         }
     } // end class DownloadFileTask
+
+
+
+
+
 
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -198,4 +244,3 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-//test
