@@ -44,6 +44,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.Scanner
 import java.util.Calendar
+import java.util.Date
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import android.content.Intent
@@ -58,7 +59,6 @@ import com.mapbox.mapboxsdk.style.layers.CircleLayer
 import com.mapbox.mapboxsdk.style.layers.Property
 import com.mapbox.mapboxsdk.style.layers.PropertyFactory
 import com.mapbox.mapboxsdk.style.sources.VectorSource
-import kotlinx.android.synthetic.main.content_main.*
 import java.time.LocalDate //api26++ no local date but got date test bonus feature
 
 import org.json.JSONArray
@@ -66,13 +66,17 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.util.ArrayList
 
-class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener,MapboxMap.OnMarkerClickListener,MapboxMap.OnMapClickListener {
+class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListener, PermissionsListener,MapboxMap.OnMarkerClickListener,MapboxMap.OnMapClickListener{
 
 
 
     private val tag = "MapActivity"
-    private var numberofCoinsinWallet : Int = 0
-    private val collectedCoins : ArrayList<Marker> = ArrayList()
+
+
+    private var downloadDate = ""
+    // Format: YYYY/MM/DD
+    private val preferencesFile = "MyPrefsFile"
+    // for storing preferences
 
 
     private var mapView: MapView? = null
@@ -86,9 +90,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
-        loadWallettoDevice()
-
-
 
         Mapbox.getInstance(applicationContext, getString(R.string.access_token))
         mapView = findViewById(R.id.mapboxMapView)
@@ -104,8 +105,21 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         super.onStart()
         mapView?.onStart()
         //val latlng = LatLng(originLocation.latitude, originLocation.longitude)
-
-
+        val aa = JSONObject()
+        aa.put("a","1")
+        aa.put("aa","2")
+        aa.put("aaa","3")
+        val bb = JSONObject()
+        bb.put("b","1")
+        bb.put("bb","2")
+        bb.put("bbb","3")
+        val aaa = JSONArray()
+        aaa.put(4,5)
+        aaa.put(aa)
+        aaa.put(bb)
+        println(aaa.toString())
+        println(aaa.getJSONObject(6).get("b"))
+        //add coin to wallet in onmarkerclick
     }
 
     override fun onResume()
@@ -119,19 +133,23 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     {
         super.onPause()
         mapView?.onPause()
+
     }
     override fun onStop()
     {
         super.onStop()
         mapView?.onStop()
-        locationEngine?.removeLocationUpdates()
-        locationLayerPlugin?.onStop()
+        locationEngine.removeLocationUpdates()
+        locationLayerPlugin.onStop()
+        storeCollectedCoinsIntoWallet()
+        storeDownloadDate()
+
     }
 
     override fun onDestroy() {
         super.onDestroy()
         mapView?.onDestroy()
-        locationEngine?.deactivate()
+        locationEngine.deactivate()
     }
     override fun onSaveInstanceState(outState: Bundle?) {
         super.onSaveInstanceState(outState)
@@ -159,102 +177,14 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
             //map?.addOnMapClickListener(this)
             map?.setOnMarkerClickListener(this)
-            addCoinstoMap()
+            //addCoinstoMap()
+            downloadJSONMapandAddCoinsToMap(map)
+
         }
     }
-    //get distance from curlocation to selected marker in metres
-    private fun distancetoCoin(originLat:Double, originLon:Double,
-                                 coinLat:Double, coinLon:Double)
-                                 :Double{
-
-        val p = 0.017453292519943295;    // Math.PI / 180
-        val a = 0.5 - Math.cos((coinLat - originLat) * p)/2 +
-                Math.cos(originLat * p) * Math.cos(coinLat * p) *
-                (1 - Math.cos((coinLon - originLon) * p))/2
-
-        return 12742 * Math.asin(Math.sqrt(a)) * 1000 // 2 * R; R = 6371 km
-    }
-
-    private fun circle(){
-
-        val vectorSource = VectorSource("source-id", "mapbox://mapbox.2opop9hr")
-        map?.addSource(vectorSource)
-
-        val circleLayer = CircleLayer("layer-id", "source-id")
-        circleLayer.sourceLayer = "museum-cusco"
-        circleLayer.setProperties(
-                PropertyFactory.visibility(Property.VISIBLE),
-                PropertyFactory.circleRadius(8f),
-                PropertyFactory.circleColor(Color.argb(1, 55, 148, 179))
-        )
-
-    }
-    private fun loadWallettoDevice(){
-        val wallet = File(applicationContext.filesDir,"wallet.txt") //used when app restarts
-        val walletContent = wallet.readText()
-        val walletData = walletContent.split("\n")
-        Log.d(tag,"#walletData after game is started = " + walletData.size.toString())
-        val coinNumber = walletData.size/4
-        numberofCoinsinWallet = coinNumber
-        for(i in 0..(coinNumber-1)){
-            val coin = Marker(MarkerOptions()
-                    .title(walletData[2 + i * 4])
-                    .snippet(walletData[3 + i * 4])
-                    .position(LatLng(walletData[0 + i * 4].toDouble(),walletData[1 + i * 4].toDouble())))
-            collectedCoins.add(coin)
-        }
-    }
-    private fun addCoinstoMap(){
-        val coinzmap = File(applicationContext.filesDir, "coinzmap.geojson")
-        val mapContents = coinzmap.readText()
-        val fc = FeatureCollection.fromJson(mapContents)
-        val file2 = File("/data/data/com.example.user.coinz/files","fc.txt")
-        val file3 = File("/data/data/com.example.user.coinz/files","fc2.txt")
-        var coinOnMapNumber = 0
-        for(feature in fc.features().orEmpty()) {
-            val coordinates = (feature.geometry() as Point).coordinates()
-            val coinId = feature?.properties()?.get("id").toString()
-            val coinValueCurrency = feature?.properties()?.get("value") .toString() + " " +  feature?.properties()?.get("currency") .toString()
-            //remove "" from the string
-            val id = coinId.replace("\"","")
-            val valueCurrency = coinValueCurrency.replace("\"","")
-
-            //check if this marker is already collected before adding it to the map
-            val coin = Marker(MarkerOptions()
-                    .title(id)
-                    .snippet(valueCurrency)
-                    .position(LatLng(coordinates[1],coordinates[0])))
-            //if collectedCoins id and marker id not the same then add marker to map
-            if(numberofCoinsinWallet == 0) {
-                map?.addMarker(MarkerOptions()
-                        .title(id)
-                        .snippet(valueCurrency)
-                        .position(LatLng(coordinates[1], coordinates[0])))
-                coinOnMapNumber++
-            }else{
-                var coinNotOnMap = true
-                for(i in 0..(numberofCoinsinWallet-1)) {
-                    if (collectedCoins[i].title  == coin.title) {
-                        coinNotOnMap = false
-                    }
-                }
-                if(coinNotOnMap) {
-                    map?.addMarker(MarkerOptions()
-                            .title(id)
-                            .snippet(valueCurrency)
-                            .position(LatLng(coordinates[1], coordinates[0])))
-                    coinOnMapNumber++
-                }
-            }
-        }
-        Log.d(tag,"coinsOnMap = " + coinOnMapNumber.toString() + ", coinsInWallet "  + numberofCoinsinWallet.toString())
 
 
-        //file2.writeText(notCollectedMarkers.get(0).position.latitude.toString())
-        //file2.writeText(notCollectedMarkers.toString())
 
-
-    }
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             Log.d(tag, "Permissions are granted")
@@ -336,25 +266,31 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
     }
 
-    override fun onMarkerClick(marker: Marker): Boolean {
-        val distance = distancetoCoin(originLocation.latitude,originLocation.longitude,
-                marker.position.latitude,marker.position.longitude)
-        val wallet = File(applicationContext.filesDir,"wallet.txt") //used when app restarts
+
+    override fun onMarkerClick(coin: Marker): Boolean {
+        //add coin to wallet and remove coin from map
+        val coinLocation = Location("")
+        coinLocation.latitude = coin.position.latitude
+        coinLocation.longitude = coin.position.longitude
+        val distance = originLocation.distanceTo(coinLocation)
+
         if(distance <= 25){
             Toast.makeText(applicationContext,"coin collected",Toast.LENGTH_SHORT).show()
-            wallet.appendText(marker.position.latitude.toString() + '\n' + marker.position.longitude.toString()
-                    + '\n' + marker.title +'\n' + marker.snippet + '\n') //store daily collected coin
-
-            collectedCoins.add(marker) //realtime coin collection tracking
-            map?.removeMarker(marker)
-            Log.d(tag, marker.title + marker.snippet)
-            //addmarkertowallet
+            val collectedCoin = JSONObject()
+            collectedCoin.put("latitude",coin.position.latitude)
+            collectedCoin.put("longitude",coin.position.longitude)
+            collectedCoin.put("id",coin.title)
+            collectedCoin.put("valueCurrency",coin.snippet)
+            DownloadCompleteRunner.collectedCoinsArray.put(collectedCoin)
+            map?.removeMarker(coin)
+            Log.d(tag,"coin collected to wallet")
         }else{
             Toast.makeText(applicationContext,"you are "+ Math.round(distance).toString()
                     +"metres away from the coin, get within 25metres to collect the coin",Toast.LENGTH_SHORT).show()
+            Log.d(tag,"coin too far away")
         }
 
-        Log.d(tag,"coin collected to wallet")
+
 
 
         return true
@@ -363,4 +299,195 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         //destinationMarker = map?.addMarker(MarkerOptions().position(point))
         Log.d(tag,"AAA")
     }
+
+
+//JSONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNnn
+
+
+    private fun storeCollectedCoinsIntoWallet(){
+        val wallet = File(applicationContext.filesDir,"wallet.txt") //used when app restarts
+        wallet.writeText(DownloadCompleteRunner.collectedCoinsArray.toString())
+    }
+    private fun storeDownloadDate(){
+        Log.d(tag,"[onPause] Storing lastDownloadDate of $downloadDate")
+        // All objects are from android.context.Context
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        // We need an Editor object to make preference changes.
+        val editor = settings.edit()
+        editor.putString("lastDownloadDate", downloadDate)
+        // Apply the edits!
+        editor.apply()
+    }
+
+    //called during midnight and onMapReady
+    //onMapReady -> download JSONMap -> add coin to map
+    private fun downloadJSONMapandAddCoinsToMap(map:MapboxMap?){
+        //11.59-12am transition and download new map
+        val date = Calendar.getInstance().time
+        val dateFormat = SimpleDateFormat("yyyy/MM/dd")
+        val currentDate = dateFormat.format(date)
+        Log.d(tag,"[onStart] currentDate is $currentDate")
+
+        // Restore preferences
+        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
+        // use ”” as the default value (this might be the first time the app is run)
+        downloadDate = settings.getString("lastDownloadDate","")
+        // Write a message to ”logcat” (for debugging purposes)
+        //downloadDate = "2018/10/07"  //test to force download map
+        Log.d(tag,"[onStart] Recalled lastDownloadDate is $downloadDate")
+
+        //file that stores the map
+        if (currentDate!= downloadDate){
+            //if dates are diff then download map from server, write geojson file to device and add coins to map
+            //in onPostExecute,update downloadDate value
+            val asyncDownload = DownloadFileTask(DownloadCompleteRunner,map)
+            asyncDownload.execute("http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson")
+            downloadDate = currentDate
+
+        }else{
+            //if map already downloaded, load wallet to device, add coins to the map that aren't in the wallet
+            DownloadCompleteRunner.loadWallettoDeivce()
+            DownloadCompleteRunner.addCoinstoMap(map)
+        }
+    }
+
+
+
+
+
+    object DownloadCompleteRunner : DownloadCompleteListener {
+        var result : String? = null
+        var collectedCoinsArray = JSONArray()                       //initialised by loadWallettoDevice()
+                                                                    //and used to store collected coins in wallet in JSON format
+        private var numberofCoinsinWallet:Int = 0                   //initialised by loadWallettoDevice()
+
+        var SHIL : Double = 0.0                                     //initialised by addCoinsToMap(map:MapboxMap?)
+        var DOLR : Double = 0.0
+        var QUID : Double = 0.0
+        var PENY : Double = 0.0
+
+        override fun downloadComplete(result: String) {
+            this.result = result
+        }
+        override fun loadWallettoDeivce(){
+            val wallet = File("/data/data/com.example.user.coinz/files","wallet.txt") //used when app restarts
+            collectedCoinsArray = JSONArray(wallet.readText())
+            numberofCoinsinWallet = collectedCoinsArray.length()
+
+        }
+        override fun addCoinstoMap(map:MapboxMap?){
+            val coinzmap = File("/data/data/com.example.user.coinz/files", "coinzmap.geojson")
+            val mapContents = coinzmap.readText()
+            val fc = FeatureCollection.fromJson(mapContents + "")
+
+            //initialise rates
+            val rates = JSONObject(mapContents).getJSONObject("rates")
+            SHIL = rates.getDouble("SHIL")
+            DOLR = rates.getDouble("DOLR")
+            QUID = rates.getDouble("QUID")
+            PENY = rates.getDouble("PENY")
+
+
+            //indicate how many coins are on the map for debugging purpose
+            var coinOnMapNumber = 0
+            for(feature in fc.features().orEmpty()) {
+                val coordinates = (feature.geometry() as Point).coordinates()
+                val coinId = feature?.properties()?.get("id").toString()
+                val coinValueCurrency = feature?.properties()?.get("value").toString() + " " +  feature?.properties()?.get("currency") .toString()
+                //remove "" from the string
+                val id = coinId.replace("\"","")
+                val valueCurrency = coinValueCurrency.replace("\"","")
+
+
+                //check if this coin is already collected before adding it to the map
+                val coin = Marker(MarkerOptions()
+                        .title(id)
+                        .snippet(valueCurrency)
+                        .position(LatLng(coordinates[1],coordinates[0])))
+
+                var coinNotOnMap = true
+
+                //if collectedCoins id and marker id not the same then add marker to map
+                if(numberofCoinsinWallet != 0) {
+                    for (i in 0..(numberofCoinsinWallet - 1)) {
+                        if (collectedCoinsArray.getJSONObject(i).getString("id") == coin.title) {
+                            coinNotOnMap = false
+                        }
+                    }
+                }
+                if(coinNotOnMap || DownloadCompleteRunner.numberofCoinsinWallet == 0) {
+                    map?.addMarker(MarkerOptions()
+                            .title(id)
+                            .snippet(valueCurrency)
+                            .position(LatLng(coordinates[1], coordinates[0])))
+                    coinOnMapNumber++
+                }
+
+
+
+            }
+            Log.d("MapActivity","coinsOnMap = " + coinOnMapNumber.toString() + ", coinsInWallet "  + numberofCoinsinWallet.toString())
+            //Log.d("MapActivity","coinsOnMap = " + coinOnMapNumber.toString())
+
+
+            //file2.writeText(notCollectedMarkers.get(0).position.latitude.toString())
+            //file2.writeText(notCollectedMarkers.toString())
+
+
+        }
+
+    }
+    class DownloadFileTask(private val caller : DownloadCompleteListener,private val map:MapboxMap?) : AsyncTask<String, Void, String>() {
+    //class DownloadFileTask(private val caller : DownloadCompleteListener) : AsyncTask<String, Void, String>() {
+        override fun doInBackground(vararg urls: String): String =
+                try {
+                    loadFileFromNetwork(urls[0])
+                } catch (e: IOException) {
+                    "Unable to load content. Check your network connection"
+                }
+
+
+        private fun loadFileFromNetwork(urlString: String): String {
+            val stream: InputStream = downloadUrl(urlString)
+            // Read input from stream, build result as a string
+            val s = Scanner(stream).useDelimiter("\\A")
+            val result = if (s.hasNext()) s.next() else ""
+            s.close()
+            return result
+        }//scanner copied from https://stackoverflow.com/questions/309424/how-to-read-convert-an-inputstream-into-a-string-in-java
+
+
+
+        // Given a string representation of a URL, sets up a connection and gets an input stream.
+        @Throws(IOException::class)
+        private fun downloadUrl(urlString: String): InputStream {
+            val url = URL(urlString)
+            val conn = url.openConnection() as HttpURLConnection
+            // Also available: HttpsURLConnection
+            conn.readTimeout = 10000 // milliseconds
+            conn.connectTimeout = 15000 // milliseconds
+            conn.requestMethod = "GET"
+            conn.doInput = true
+            conn.connect() // Starts the query
+            return conn.inputStream
+        }
+        override fun onPostExecute(result: String) {
+            super.onPostExecute(result)
+            caller.downloadComplete(result)
+
+            //write downloaded json file to device
+            val file = File("/data/data/com.example.user.coinz/files","coinzmap.geojson")
+            file.writeText(DownloadCompleteRunner.result + "")
+            //new day empty wallet
+            val file2 = File("/data/data/com.example.user.coinz/files","wallet.txt")
+            file2.writeText("")
+
+            caller.addCoinstoMap(map)
+
+        }
+
+    } // end class DownloadFileTask
+
+
+
 }

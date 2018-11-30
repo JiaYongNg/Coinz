@@ -23,8 +23,19 @@ import java.text.SimpleDateFormat
 import android.content.Intent
 import android.location.Location
 import android.os.PersistableBundle
-import kotlinx.android.synthetic.main.content_main.*
+import com.google.firebase.auth.FirebaseAuth
 import java.time.LocalDate //api26++ no local date but got date test bonus feature
+import com.google.firebase.auth.FirebaseUser
+import android.widget.Toast
+import com.google.firebase.auth.AuthResult
+import com.google.android.gms.tasks.Task
+import android.support.annotation.NonNull
+import com.google.android.gms.tasks.OnCompleteListener
+import com.example.user.coinz.R.string.email
+
+
+
+
 
 
 
@@ -41,14 +52,28 @@ class MainActivity : AppCompatActivity(){
     private val preferencesFile = "MyPrefsFile"
     // for storing preferences
 
-
+    private var mAuth: FirebaseAuth? = null
 
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        mAuth = FirebaseAuth.getInstance()
 
+        login_button_login.setOnClickListener {
+            performLogin()
+
+        }
+        create_account_textview.setOnClickListener{
+            Log.d(tag, "login successful")
+
+            // launch the login activity somehow
+            val intent = Intent(this, RegistrationActivity::class.java)
+            startActivity(intent)
+
+        }
+/**
         setSupportActionBar(toolbar)
 
         fab.setOnClickListener { view ->
@@ -57,33 +82,10 @@ class MainActivity : AppCompatActivity(){
             val intent = Intent(this, MapActivity::class.java)
             startActivity(intent)
         }
+**/
+        //downloadJSONMap()
 
-
-        //11.59-12am transition and download new map
-        val date = Calendar.getInstance().time
-        val dateFormat = SimpleDateFormat("yyyy/MM/dd")
-        val currentDate = dateFormat.format(date)
-        Log.d(tag,"[onStart] currentDate is $currentDate")
-
-        // Restore preferences
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        // use ”” as the default value (this might be the first time the app is run)
-        downloadDate = settings.getString("lastDownloadDate","")
-        // Write a message to ”logcat” (for debugging purposes)
-        //downloadDate = "2018/10/07"  //test to force download map
-        Log.d(tag,"[onStart] Recalled lastDownloadDate is $downloadDate")
-
-        //file that stores the map
-        if (currentDate!= downloadDate){
-            //if dates are diff then download map from server, write geojson to device in onPostExecute,update downloadDate value
-            val asyncDownload = DownloadFileTask(DownloadCompleteRunner)
-            asyncDownload.execute("http://homepages.inf.ed.ac.uk/stg/coinz/$currentDate/coinzmap.geojson")
-            downloadDate = currentDate
-
-
-        }
-
-/**
+        /**
         val filename = "myfile1"
         val fileContents = "Hello world!"
         applicationContext.openFileOutput(filename, Context.MODE_PRIVATE).use {
@@ -91,12 +93,31 @@ class MainActivity : AppCompatActivity(){
         }
          **/
 
+
+
     }
 
     @SuppressWarnings("MissingPermission")
     override fun onStart()
     {
         super.onStart()
+        Log.d(tag,"MAIN START")
+        // Check if user is signed in (non-null) and update UI accordingly.
+        if (mAuth?.currentUser != null) {
+            Log.d(tag,"already signed in")
+/**
+            val intent = Intent(this, MapActivity::class.java)
+            startActivity(intent)
+            finish()**/
+            println("current user UID" + mAuth?.currentUser?.uid)
+        } else {
+            Log.d(tag,"not signed in")
+
+        }
+
+
+
+
 
 
 
@@ -106,20 +127,16 @@ class MainActivity : AppCompatActivity(){
     override fun onResume()
     {
         super.onResume()
+        Log.d(tag,"MAIN RESUME")
     }
 
 
     override fun onPause()
     {
         super.onPause()
-        Log.d(tag,"[onPause] Storing lastDownloadDate of $downloadDate")
-        // All objects are from android.context.Context
-        val settings = getSharedPreferences(preferencesFile, Context.MODE_PRIVATE)
-        // We need an Editor object to make preference changes.
-        val editor = settings.edit()
-        editor.putString("lastDownloadDate", downloadDate)
-        // Apply the edits!
-        editor.apply()
+
+        Log.d(tag, "MAIN PAUSE")
+
     }
 
 
@@ -129,98 +146,58 @@ class MainActivity : AppCompatActivity(){
         //if device date - "bonus" date stored in cloud != 1 OR streak = 7 && bonus received, then restart streak, reset streak
         // bonus received:int"increases during first write", streak:int,streak == #getbonus,then bonus received
         // streak is getbonus?
-
+        Log.d(tag, "MAIN STOP")
+        //storeDownloadDate()
 /**
         val dtf = SimpleDateFormat("yyyy/MM/dd")
         val localDate = LocalDate.now()
         val downloadDate= dtf.format(localDate)
         //System.out.println("WWWWWWW" + dtf.format(localDate))
 **/
-
+        finish()
 
 
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(tag,"MAIN DESTROY")
 
     }
 
-    override fun onSaveInstanceState(outState: Bundle?) {
-        super.onSaveInstanceState(outState)
-    }
 
-    override fun onLowMemory() {
-        super.onLowMemory()
-    }
+    private fun performLogin(){
+        val email = email_edittext_login.text.toString()
+        val password = password_edittext_login.text.toString()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    object DownloadCompleteRunner : DownloadCompleteListener {
-        var result : String? = null
-        override fun downloadComplete(result: String) {
-            this.result = result
+        Log.d(tag, "Attempt login with email/pw: $email/***")
+        if (email.isEmpty()) {
+            Toast.makeText(this, "Please enter email", Toast.LENGTH_SHORT).show()
+            return
         }
+        if (password.isEmpty()) {
+            Toast.makeText(this, "Please enter password", Toast.LENGTH_SHORT).show()
+            return
+        }
+        FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).addOnCompleteListener {
+            // If sign in fails, display a message to the user. If sign in succeeds
+            // the auth state listener will be notified and logic to handle the
+            // signed in user can be handled in the listener.
+            if (!it.isSuccessful) {
+                // there was an error
+                if (password.length< 8) {
+                    Toast.makeText(this, "password length too short", Toast.LENGTH_LONG).show()
 
-    }
-    class DownloadFileTask(private val caller : DownloadCompleteListener) : AsyncTask<String, Void, String>() {
-        override fun doInBackground(vararg urls: String): String =
-            try {
-                loadFileFromNetwork(urls[0])
-            } catch (e: IOException) {
-                "Unable to load content. Check your network connection"
+                } else {
+                    Toast.makeText(this, "auth failed", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                val intent = Intent(this, MapActivity::class.java)
+                startActivity(intent)
+                finish()
             }
-
-
-        private fun loadFileFromNetwork(urlString: String): String {
-            val stream: InputStream = downloadUrl(urlString)
-            // Read input from stream, build result as a string
-            val s = Scanner(stream).useDelimiter("\\A")
-            val result = if (s.hasNext()) s.next() else ""
-            s.close()
-            return result
-        }//scanner copied from https://stackoverflow.com/questions/309424/how-to-read-convert-an-inputstream-into-a-string-in-java
-
-
-
-        // Given a string representation of a URL, sets up a connection and gets an input stream.
-        @Throws(IOException::class)
-        private fun downloadUrl(urlString: String): InputStream {
-            val url = URL(urlString)
-            val conn = url.openConnection() as HttpURLConnection
-            // Also available: HttpsURLConnection
-            conn.readTimeout = 10000 // milliseconds
-            conn.connectTimeout = 15000 // milliseconds
-            conn.requestMethod = "GET"
-            conn.doInput = true
-            conn.connect() // Starts the query
-            return conn.inputStream
         }
-        override fun onPostExecute(result: String) {
-            super.onPostExecute(result)
-            caller.downloadComplete(result)
-            val file = File("/data/data/com.example.user.coinz/files","coinzmap.geojson")
-            file.writeText(DownloadCompleteRunner.result + "")
-            //new day new wallet
-            val file2 = File("/data/data/com.example.user.coinz/files","wallet.txt")
-            file2.writeText("")
-            println(file2.readText())
-
-        }
-    } // end class DownloadFileTask
+    }
 
 
 
