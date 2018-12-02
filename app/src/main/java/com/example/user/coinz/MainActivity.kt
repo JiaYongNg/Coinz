@@ -47,10 +47,6 @@ import com.example.user.coinz.R.string.email
 class MainActivity : AppCompatActivity(){
 
     private val tag = "MainActivity"
-    private var downloadDate = ""
-    // Format: YYYY/MM/DD
-    private val preferencesFile = "MyPrefsFile"
-    // for storing preferences
 
     private var mAuth: FirebaseAuth? = null
 
@@ -105,11 +101,12 @@ class MainActivity : AppCompatActivity(){
         // Check if user is signed in (non-null) and update UI accordingly.
         if (mAuth?.currentUser != null) {
             Log.d(tag,"already signed in")
-/**
+
             val intent = Intent(this, MapActivity::class.java)
             startActivity(intent)
-            finish()**/
+
             println("current user UID" + mAuth?.currentUser?.uid)
+            finish()
         } else {
             Log.d(tag,"not signed in")
 

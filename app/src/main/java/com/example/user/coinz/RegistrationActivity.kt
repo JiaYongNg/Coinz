@@ -5,16 +5,15 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import android.util.Patterns.EMAIL_ADDRESS
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.android.synthetic.main.activity_registration.*
 
-import com.google.firebase.auth.AuthResult;
-import com.google.firebase.auth.FirebaseUser;
 
-
-
-//USERNAME not processed
 class RegistrationActivity : AppCompatActivity() {
+
+    private  val tag = "RegistrationActivity"
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,9 +24,9 @@ class RegistrationActivity : AppCompatActivity() {
         }
 
         already_have_account_text_view.setOnClickListener {
-            Log.d("MainActivity", "Try to show login activity")
+            Log.d(tag, "go back to main activity")
 
-            // launch the login activity somehow
+            // launch the login activity
             val intent = Intent(this, MainActivity::class.java)
             startActivity(intent)
         }
@@ -39,8 +38,8 @@ class RegistrationActivity : AppCompatActivity() {
     }
 
 
+
     private fun performRegistration() {
-        val username = username_edittext_register.text.toString()
         val email = email_edittext_register.text.toString()
         val password = password_edittext_register.text.toString()
 
@@ -48,6 +47,17 @@ class RegistrationActivity : AppCompatActivity() {
             Toast.makeText(this, "Please enter email", Toast.LENGTH_SHORT).show()
             return
         }
+
+        if(!EMAIL_ADDRESS.matcher(email).matches()){
+            Toast.makeText(this, "email invalid", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if(!password.matches(Regex("[A-Za-z0-9]+"))){
+            Toast.makeText(this, "password must be alphanumeric", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if (password.isEmpty()) {
             Toast.makeText(this, "Please enter password", Toast.LENGTH_SHORT).show()
             return
@@ -57,35 +67,25 @@ class RegistrationActivity : AppCompatActivity() {
             return
         }
 
-        Log.d("MainActivity", "Email is: $email")
-        Log.d("MainActivity", "Password: $password")
+
+
+        Log.d(tag, "Email is: $email")
+        Log.d(tag, "Password: $password")
 
         // Firebase Authentication to create a user with email and password
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password).addOnCompleteListener {
-            Toast.makeText(this, "createUserWithEmail:onComplete:" + it.isSuccessful, Toast.LENGTH_SHORT).show()
-            // If sign in fails, display a message to the user. If sign in succeeds
-            // the auth state listener will be notified and logic to handle the
-            // signed in user can be handled in the listener.
-            if (!it.isSuccessful) {
-                Toast.makeText(this, "Authentication failed." + it.exception, Toast.LENGTH_LONG).show()
-            } else {
-                Log.d("Main", "Successfully created user with uid: ${it.result?.user?.uid}")
+            if (it.isSuccessful) {
+                //show successful registration message, add username to firestore, then switch to login activity
+                Toast.makeText(this, "createUserWithEmail:onComplete:" + it.isSuccessful, Toast.LENGTH_SHORT).show()
+                Log.d(tag, "Successfully created user with uid: ${it.result?.user?.uid}")
+
                 val intent = Intent(this, MainActivity::class.java)
                 startActivity(intent)
                 finish()
+            } else {
+                Toast.makeText(this, "Authentication failed." + it.exception, Toast.LENGTH_LONG).show()
             }
-            /**
-            if (!it.isSuccessful) return@addOnCompleteListener
 
-            // else if successful
-            val intent = Intent(this, RegistrationActivity::class.java)
-            startActivity(intent)
-            Log.d("Main", "Successfully created user with uid: ${it.result?.user?.uid}")
-            }
-            .addOnFailureListener{
-            Log.d("Main", "Failed to create user: ${it.message}")
-            Toast.makeText(this, "Failed to create user: ${it.message}", Toast.LENGTH_SHORT).show()
-            }**/
         }
 
     }
