@@ -69,27 +69,6 @@ class MainActivity : AppCompatActivity(){
             startActivity(intent)
 
         }
-/**
-        setSupportActionBar(toolbar)
-
-        fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                    .setAction("Action", null).show()
-            val intent = Intent(this, MapActivity::class.java)
-            startActivity(intent)
-        }
-**/
-        //downloadJSONMap()
-
-        /**
-        val filename = "myfile1"
-        val fileContents = "Hello world!"
-        applicationContext.openFileOutput(filename, Context.MODE_PRIVATE).use {
-        it.write(fileContents.toByteArray())
-        }
-         **/
-
-
 
     }
 

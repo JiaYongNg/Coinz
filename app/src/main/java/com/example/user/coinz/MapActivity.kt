@@ -94,8 +94,8 @@ companion object {
     private var firestoreUserInfo: DocumentReference? = null        //userInfo is created by using account UID as a reference
     private var firestoreUserWallet: DocumentReference? = null      //userWallet is created by using Username,
                                                                     //which the player chooses on the first login
-
     private var mAuth: FirebaseAuth? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_map)
@@ -121,14 +121,23 @@ companion object {
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
         firestoreChat = firestore?.collection(COLLECTION_KEY)
                 ?.document(DOCUMENT_KEY)
-        btn2_button.setOnClickListener { _-> println(walletData)}
-        realtimeUpdateListener()
+        btn2_button.setOnClickListener { _-> bankActivity()}
+        //realtimeUpdateListener()
         //already_have_account_text_view.setOnClickListener { _->realtimeUpdateListener() }
         already_have_account_text_view.setOnClickListener { _->sendMessage() }
 
-
         firstLoginCheck()
-        Log.d(tag,"AAACEATION")
+    }
+    private fun bankActivity(){
+        val intent = Intent(this, BankActivity::class.java)
+        intent.putExtra("username",username)
+        intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
+        intent.putExtra("DOLR",DownloadCompleteRunner.dolr)
+        intent.putExtra("PENY",DownloadCompleteRunner.peny)
+        intent.putExtra("QUID",DownloadCompleteRunner.quid)
+        intent.putExtra("SHIL",DownloadCompleteRunner.shil)
+        startActivity(intent)
+        finish()
     }
     //creates a log Out dialog
     private fun logOut(){
@@ -232,7 +241,10 @@ companion object {
                             //create a link from the account UID to the username
                             val usernameData = HashMap<String, Any?>()
                             usernameData["Username"] = usernameStr
+                            val netWorth = HashMap<String, Any?>()
+                            netWorth["Net worth"] = 0.0
                             firestoreUserInfo?.set(usernameData)
+                            firestoreUserInfo?.update(netWorth)
                             username = usernameStr
 
                             //create user wallet document
@@ -372,16 +384,16 @@ companion object {
     {
         super.onPause()
         mapView?.onPause()
-
+        if(mAuth?.currentUser != null && coinNumberForWallet != 1){
+            firestoreUserWallet?.update(walletData)?.addOnSuccessListener {
+                Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")}
+        }
 
     }
     override fun onStop()
     {
         //if user did not log out, store collected coin to wallet
-        if(mAuth?.currentUser != null && coinNumberForWallet != 1){
-            firestoreUserWallet?.update(walletData)?.addOnSuccessListener {
-                Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")}
-        }
+
         super.onStop()
         mapView?.onStop()
         if(map!= null){
@@ -533,16 +545,7 @@ companion object {
         //if(distance <= 25){
         if(distance <= 1000){//for testing
             Toast.makeText(applicationContext,"coin collected",Toast.LENGTH_SHORT).show()
-/**
-            //add collected coin to JSON array, which will be stored on device when onStop()
-            val collectedCoin = JSONObject()
-            collectedCoin.put("latitude",coin.position.latitude)
-            collectedCoin.put("longitude",coin.position.longitude)
-            collectedCoin.put("id",coin.title)
-            collectedCoin.put("valueCurrency",coin.snippet)
-            DownloadCompleteRunner.collectedCoinsArray.put(collectedCoin)
-            Log.d(tag,"coin collected to device wallet")
-**/
+
             //if this is the first collected coin, then update the userInfo
             //walletDate with the current date
             if(DownloadCompleteRunner.numberOfCoinsinWallet == 0){
@@ -563,9 +566,10 @@ companion object {
             coinData["bankedIn"] = false
             coinData["coinGivenToOthers"] = false
             coinData["coinGivenByOthers"] = false
+            coinData["coinGiverName"] = ""
             walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinNumberForWallet)}" ] = coinData
             coinNumberForWallet++
-            Log.d(tag,"BBB"+coinData.toString())
+            Log.d(tag,"collected coin's data is "+coinData.toString())
             map?.removeMarker(coin)
 
 
@@ -643,16 +647,14 @@ companion object {
 
     object DownloadCompleteRunner : DownloadCompleteListener {
         var result : String? = null
-//        var collectedCoinsArray = JSONArray()                       //initialised by loadWallettoDevice()
-//                                                                    //and used to store collected coins in wallet in JSON format
         private var walletCoinId = ArrayList<String>()                      //initialised by loadWallettoDevice(), store wallet's coins' id
 
         var numberOfCoinsinWallet = 0                                  //initialised by loadWallettoDevice()
 
-        var SHIL : Double = 0.0                                     //initialised by addCoinsToMap(map:MapboxMap?)
-        var DOLR : Double = 0.0
-        var QUID : Double = 0.0
-        var PENY : Double = 0.0
+        var shil : Double = 0.0                                     //initialised by addCoinsToMap(map:MapboxMap?)
+        var dolr : Double = 0.0
+        var quid : Double = 0.0
+        var peny : Double = 0.0
 
         override fun downloadComplete(result: String) {
             this.result = result
@@ -697,10 +699,10 @@ companion object {
 
             //initialise rates
             val rates = JSONObject(mapContents).getJSONObject("rates")
-            SHIL = rates.getDouble("SHIL")
-            DOLR = rates.getDouble("DOLR")
-            QUID = rates.getDouble("QUID")
-            PENY = rates.getDouble("PENY")
+            shil = rates.getDouble("SHIL")
+            dolr = rates.getDouble("DOLR")
+            quid = rates.getDouble("QUID")
+            peny = rates.getDouble("PENY")
 
 
             //indicate how many coins are on the map for debugging purpose
@@ -747,7 +749,6 @@ companion object {
     class DownloadFileTask(private val caller : DownloadCompleteListener,private val map:MapboxMap?,
                            private val firestoreUserWallet: DocumentReference?,private val walletDate:String,
                            private val currentDate:String) : AsyncTask<String, Void, String>() {
-    //class DownloadFileTask(private val caller : DownloadCompleteListener) : AsyncTask<String, Void, String>() {
         override fun doInBackground(vararg urls: String): String =
                 try {
                     loadFileFromNetwork(urls[0])
@@ -788,6 +789,9 @@ companion object {
             val file = File("/data/data/com.example.user.coinz/files","coinzmap.geojson")
             file.writeText(DownloadCompleteRunner.result!!)
 
+            //before adding coins to the map, check if the wallet's coins are collected today or not
+            //if collected today, load the wallet to device, else empty the wallet as coins only last
+            //until the end of the day
             if(walletDate != currentDate){
                 caller.emptyWallet(firestoreUserWallet)
                 caller.addCoinstoMap(map)
