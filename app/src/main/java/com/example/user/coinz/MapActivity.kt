@@ -41,7 +41,9 @@ import java.util.Scanner
 import java.util.Calendar
 import java.text.SimpleDateFormat
 import android.content.Intent
+import android.graphics.Color
 import android.location.Location
+import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.text.InputFilter
 import android.widget.EditText
@@ -70,6 +72,11 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     private var walletDate : String = ""
     private var coinNumberForWallet = 1
     private var walletData = HashMap<String, Any?>()
+
+    private var totalCoinCollected = 0 //reset this after adding coin to firestore wallet
+    private var coinCollectedToday = 0
+    private var coinCollectedTodayAchievement = 0
+
     private var dialogUsername : Dialog? = null
     private var dialogLogOut : Dialog? = null
 
@@ -80,16 +87,10 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     private lateinit var locationEngine : LocationEngine
     private lateinit var locationLayerPlugin : LocationLayerPlugin
 
-companion object {
-    private const val COLLECTION_KEY = "Chat"
-    private const val DOCUMENT_KEY = "Message"
-    private const val NAME_FIELD = "Name"
-    private const val TEXT_FIELD = "Text"
-}
+
 
 
     private var firestore: FirebaseFirestore? = null
-    private var firestoreChat: DocumentReference? = null
     private var firestoreUsernames: DocumentReference? = null       //List of used Usernames
     private var firestoreUserInfo: DocumentReference? = null        //userInfo is created by using account UID as a reference
     private var firestoreUserWallet: DocumentReference? = null      //userWallet is created by using Username,
@@ -119,14 +120,23 @@ companion object {
         firestore?.firestoreSettings = settings
         firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
-        firestoreChat = firestore?.collection(COLLECTION_KEY)
-                ?.document(DOCUMENT_KEY)
-        btn2_button.setOnClickListener { _-> bankActivity()}
-        //realtimeUpdateListener()
-        //already_have_account_text_view.setOnClickListener { _->realtimeUpdateListener() }
-        already_have_account_text_view.setOnClickListener { _->sendMessage() }
+
+        btn2_button.setOnClickListener { _->bankActivity()}
+        already_have_account_text_view.setOnClickListener { _->shopActivity()}
 
         firstLoginCheck()
+    }
+    private fun userInfoActivity(){
+        val intent = Intent(this, UserInfoActivity::class.java)
+        intent.putExtra("username",username)
+        intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
+        startActivity(intent)
+    }
+    private fun shopActivity(){
+        val intent = Intent(this, ShopActivity::class.java)
+        intent.putExtra("username",username)
+        intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
+        startActivity(intent)
     }
     private fun bankActivity(){
         val intent = Intent(this, BankActivity::class.java)
@@ -137,7 +147,6 @@ companion object {
         intent.putExtra("QUID",DownloadCompleteRunner.quid)
         intent.putExtra("SHIL",DownloadCompleteRunner.shil)
         startActivity(intent)
-        finish()
     }
     //creates a log Out dialog
     private fun logOut(){
@@ -148,11 +157,32 @@ companion object {
             { _, _ ->
                 //store collected Coins to wallet before sign out
                 firestoreUserWallet?.update(walletData)?.addOnCompleteListener{
-                    FirebaseAuth.getInstance().signOut()
-                    Log.d(tag,"logging out")
-                    val intent = Intent(this, MainActivity::class.java)
-                    startActivity(intent)
-                    finish()
+                    totalCoinCollected += walletData.size
+                    coinCollectedToday += walletData.size
+                    //update achievement
+                    firestoreUserInfo?.update("Collect # coins",totalCoinCollected)?.addOnCompleteListener{
+                        firestoreUserInfo?.update("Collect # coins in a day tracker",coinCollectedToday)?.addOnCompleteListener {
+                            if(coinCollectedToday > coinCollectedTodayAchievement){
+                                firestoreUserInfo?.update("Collect # coins in a day",coinCollectedToday)?.addOnCompleteListener {
+                                    FirebaseAuth.getInstance().signOut()
+                                    Log.d(tag,"logging out")
+                                    val intent = Intent(this, MainActivity::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                }
+                            }else{
+                                FirebaseAuth.getInstance().signOut()
+                                Log.d(tag,"logging out")
+                                val intent = Intent(this, MainActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            }
+                        }
+
+                    }
+
+
+
                 }
 
             }
@@ -181,6 +211,10 @@ companion object {
                 if (document != null) {
                     username = document.get("Username").toString()
                     walletDate = document.get("walletDate").toString()
+                    coinCollectedToday = document.get("Collect # coins in a day tracker").toString().toInt()
+                    coinCollectedTodayAchievement = document.get("Collect # coins in a day").toString().toInt()
+                    totalCoinCollected = document.get("Collect # coins").toString().toInt()
+
                     firestoreUserWallet = firestore?.collection("Users")?.document(username!!)
                     Log.d(tag, "logged in user's username is $username")
 
@@ -238,13 +272,22 @@ companion object {
                             //add username to the username database
                             firestoreUsernames?.update("user"+(document.data?.size!! + 1).toString(),usernameStr)
 
-                            //create a link from the account UID to the username
+                            //create a link from the account UID to the username and initialise all data
                             val usernameData = HashMap<String, Any?>()
                             usernameData["Username"] = usernameStr
-                            val netWorth = HashMap<String, Any?>()
-                            netWorth["Net worth"] = 0.0
+                            usernameData["Net worth"] = 0.0
+                            usernameData["Booster 1"] = 0
+                            usernameData["Booster 2"] = 0
+                            usernameData["Booster 3"] = 0
+                            usernameData["Booster 4"] = 0
+                            usernameData["Collect # coins"] = 0
+                            usernameData["Collect # coins in a day"] = 0 //achievement value
+                            usernameData["Collect # coins in a day tracker"] = 0 //hidden value to keep track of how many coins collected today
+                            usernameData["Coin giver"] = 0
+                            usernameData["Coin getter"] = 0
+                            usernameData["Login streak"] = 0
+
                             firestoreUserInfo?.set(usernameData)
-                            firestoreUserInfo?.update(netWorth)
                             username = usernameStr
 
                             //create user wallet document
@@ -267,109 +310,15 @@ companion object {
         }
 
     }
-    private fun test2(){
-        val DATABase = firestore?.collection("Chat")?.document("Message")
-        DATABase?.get()
-                ?.addOnSuccessListener { document ->
-                    if (document != null) {
-                        Log.d(tag, "DocumentSnapshot data: " + document.data)
-                        //println("COIN1"+document.get("Coin1"))
-                        println("COIN SIZE = "+document.data?.size!!)
-                        for(i in 1..(document.data?.size!!)){
-                            println("THE ID = "+document.get("Coin$i.id"))
 
-                        }
-                        //println("CCC?" + c)
 
-                    } else {
-                        Log.d(tag, "No such document")
-                    }
-                }
-                ?.addOnFailureListener { exception ->
-                    Log.d(tag, "get failed with ", exception)
-                }
 
-    }
-
-    private fun getDoc(){
-        val DATABase = firestore?.collection("Users")
-        val ssd = DATABase?.whereEqualTo("num","2")
-        ssd?.get()?.addOnCompleteListener{
-            if(it.isSuccessful){
-                for(documents in it.result!!){
-                    println("id = " +documents.id)
-                    println("nums = "+documents.get("num"))
-                }
-            }else{
-                Log.e(tag,"getDoc() failed")
-            }
-        }
-    }
-    private fun sendMessage() {
-// create a message of the form { ”Name”: str1, ”Text”: str2 }
-        val newMessage = mapOf(
-                NAME_FIELD to "nameeee",
-                TEXT_FIELD to "message")
-// send the message and listen for success or failure
-        val docData = HashMap<String, Any?>()
-        val nestedData = HashMap<String, Any>()
-        nestedData["id"] = "5g"
-        nestedData["Val"] = 3.8
-        nestedData["Curren"] = "SHIL"
-        nestedData["b"] = true
-        docData["Coin1"] = nestedData
-        val nestedData2 = HashMap<String, Any>()
-        nestedData2["id"] = "1234f"
-        nestedData2["Val"] = 3.8
-        nestedData2["Curren"] = "SHIL"
-        nestedData2["b"] = true
-        docData["Coin2"] = nestedData2
-        firestoreChat?.update("Coin1.id","25")
-        //firestoreChat?.set(docData)
-                //?.addOnSuccessListener { Toast.makeText(applicationContext,"message sent",Toast.LENGTH_SHORT).show() } // anko
-                ?.addOnSuccessListener { Log.d(tag,"message sent = " + docData) } // anko
-                ?.addOnFailureListener { e -> Log.e(tag, e.message) }
-        //firestoreChat?.update("aaaa","dsds")
-
-    }
-
-    private fun realtimeUpdateListener() {
-        firestoreChat?.addSnapshotListener { documentSnapshot, e ->
-            when {
-                e != null -> Log.e(tag, e.message)
-                documentSnapshot != null && documentSnapshot.exists() -> {
-                with(documentSnapshot) {
-                    val incoming = "${data?.get(NAME_FIELD)}: ${data?.get(TEXT_FIELD)}"
-                    //Toast.makeText(applicationContext,incoming,Toast.LENGTH_SHORT).show()
-                    Log.d(tag,"incoming = $incoming")
-                    //already_have_account_text_view.text = "aaa"
-                    already_have_account_text_view.text = incoming
-                    }
-                }
-            }
-        }
-    }
     @SuppressWarnings("MissingPermission")
     override fun onStart(){
         super.onStart()
         //firstLoginCheck()
         mapView?.onStart()
-        //val latlng = LatLng(originLocation.latitude, originLocation.longitude)
-        val aa = JSONObject()
-        aa.put("a","1")
-        aa.put("aa","2")
-        aa.put("aaa","3")
-        val bb = JSONObject()
-        bb.put("b","1")
-        bb.put("bb","2")
-        bb.put("bbb","3")
-        val aaa = JSONArray()
-        aaa.put(4,5)
-        aaa.put(aa)
-        aaa.put(bb)
-        println(aaa.toString())
-        println(aaa.getJSONObject(6).get("b"))
-        //add coin to wallet in onmarkerclick
+
     }
 
     override fun onResume()
@@ -384,15 +333,38 @@ companion object {
     {
         super.onPause()
         mapView?.onPause()
+        println("RRRRRRRRRRR"+walletData.size)
+        //if user did not log out, store collected coin to wallet and update achievement value
         if(mAuth?.currentUser != null && coinNumberForWallet != 1){
+            totalCoinCollected += walletData.size
+            coinCollectedToday += walletData.size
+            println("PPPPPPPPPPPPP"+totalCoinCollected)
+            println(coinCollectedToday)
+            println(walletData.size)
             firestoreUserWallet?.update(walletData)?.addOnSuccessListener {
+
+                firestoreUserInfo?.update("Collect # coins",totalCoinCollected)
+                firestoreUserInfo?.update("Collect # coins in a day tracker",coinCollectedToday)
+
+                if(coinCollectedToday > coinCollectedTodayAchievement){
+                    //update achievement
+                    firestoreUserInfo?.update("Collect # coins in a day",coinCollectedToday)
+                }
                 Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")}
+                println("TTTTTTTTTTT"+DownloadCompleteRunner.numberOfCoinsinWallet)
+                DownloadCompleteRunner.numberOfCoinsinWallet += walletData.size
+                println("UUUUUUUUUUU"+DownloadCompleteRunner.numberOfCoinsinWallet)
+
+            //reset walletData
+                walletData = HashMap()
+                coinNumberForWallet = 1
+
+
         }
 
     }
     override fun onStop()
     {
-        //if user did not log out, store collected coin to wallet
 
         super.onStop()
         mapView?.onStop()
@@ -557,7 +529,6 @@ companion object {
 
 
 
-            DownloadCompleteRunner.numberOfCoinsinWallet
             val coinData = HashMap<String, Any>()
             val valueCurrency = coin.snippet.split(" ")
             coinData["id"] = coin.title
@@ -568,6 +539,7 @@ companion object {
             coinData["coinGivenByOthers"] = false
             coinData["coinGiverName"] = ""
             walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinNumberForWallet)}" ] = coinData
+            println("QQQQQQQ"+walletData.size)
             coinNumberForWallet++
             Log.d(tag,"collected coin's data is "+coinData.toString())
             map?.removeMarker(coin)

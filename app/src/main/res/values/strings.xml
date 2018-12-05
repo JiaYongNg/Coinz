@@ -10,4 +10,24 @@
     <string name="go_back_to_login_page">Go back to login page</string>
     <string name="register">Register</string>
     <string name="username">Username</string>
+    <string name="buy">Buy</string>
+    <string name="back">Back</string>
+    <string name="last_5_min_200_gold">Last 5 min 200 gold</string>
+    <string name="last_10_min_380_gold">Last 10 min 380 gold</string>
+    <string name="last_15_min_540_gold">Last 15 min 540 gold</string>
+    <string name="last_20_min_680_gold">Last 20 min 680 gold</string>
+    <string name="booster_1_image">booster_1_image</string>
+    <string name="booster_2_image">booster_2_image</string>
+    <string name="booster_3_image">booster_3_image</string>
+    <string name="booster_4_image">booster_4_image</string>
+    <string name="coin_getter_medal">coin_getter_medal</string>
+    <string name="coin_giver_medal">coin_giver_medal</string>
+    <string name="net_worth_medal">net_worth_medal</string>
+    <string name="coin_collector_medal">coin_collector_medal</string>
+    <string name="single_day_coin_collector_medal">single_day_coin_collector_medal</string>
+    <string name="inventory_tap_to_use_boosters">Inventory - tap to use boosters</string>
+    <string name="x0">x0</string>
+    <string name="_0_1000">0/1000</string>
+    <string name="_0_100_000">0/100,000</string>
+    <string name="_0_50">0/50</string>
 </resources>

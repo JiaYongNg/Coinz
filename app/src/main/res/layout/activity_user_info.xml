@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".UserInfoActivity">
+
+    <ImageView
+        android:id="@+id/coin_getter_medal"
+        android:layout_width="108dp"
+        android:layout_height="92dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/single_day_coin_collector_medal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/booster_3_image"
+        app:layout_constraintTop_toBottomOf="@+id/net_worth_medal"
+        app:srcCompat="@drawable/medal_image"
+        android:contentDescription="@string/coin_getter_medal" />
+
+    <ImageView
+        android:id="@+id/coin_giver_medal"
+        android:layout_width="108dp"
+        android:layout_height="92dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/coin_collector_medal"
+        app:layout_constraintEnd_toStartOf="@+id/booster_3_image"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/net_worth_medal"
+        app:srcCompat="@drawable/medal_image"
+        android:contentDescription="@string/coin_giver_medal" />
+
+    <ImageView
+        android:id="@+id/net_worth_medal"
+        android:layout_width="108dp"
+        android:layout_height="92dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintEnd_toStartOf="@+id/coin_getter_medal"
+        app:layout_constraintStart_toEndOf="@+id/coin_giver_medal"
+        app:layout_constraintTop_toBottomOf="@+id/net_worth_text"
+        app:srcCompat="@drawable/medal_image"
+        android:contentDescription="@string/net_worth_medal" />
+
+    <ImageView
+        android:id="@+id/coin_collector_medal"
+        android:layout_width="108dp"
+        android:layout_height="92dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="32dp"
+        app:layout_constraintBottom_toTopOf="@+id/textView"
+        app:layout_constraintEnd_toStartOf="@+id/coin_getter_medal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/medal_image"
+        android:contentDescription="@string/coin_collector_medal" />
+
+    <ImageView
+        android:id="@+id/single_day_coin_collector_medal"
+        android:layout_width="108dp"
+        android:layout_height="92dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginStart="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/textView"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/coin_giver_medal"
+        app:srcCompat="@drawable/medal_image"
+        android:contentDescription="@string/single_day_coin_collector_medal" />
+
+    <ImageView
+        android:id="@+id/booster_1_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/booster_2_image"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/booster_1"
+        android:contentDescription="@string/booster_1_image" />
+
+    <ImageView
+        android:id="@+id/booster_2_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@id/booster_1_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/booster_3_image"
+        app:srcCompat="@drawable/booster_2"
+        android:contentDescription="@string/booster_2_image" />
+
+    <ImageView
+        android:id="@+id/booster_3_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@id/booster_2_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/booster_4_image"
+        app:srcCompat="@drawable/booster_3"
+        android:contentDescription="@string/booster_3_image" />
+
+    <ImageView
+        android:id="@+id/booster_4_image"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toEndOf="@id/booster_3_image"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:srcCompat="@drawable/booster_4"
+        android:contentDescription="@string/booster_4_image" />
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="@string/inventory_tap_to_use_boosters"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"
+        app:layout_constraintBottom_toTopOf="@+id/booster_2_image"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/booster_1_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:text="@string/x0"
+        app:layout_constraintBottom_toBottomOf="@+id/booster_1_image"
+        app:layout_constraintEnd_toStartOf="@+id/booster_2_image"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/booster_2_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/x0"
+        app:layout_constraintBottom_toBottomOf="@+id/booster_2_image"
+        app:layout_constraintEnd_toStartOf="@+id/booster_3_image"
+        app:layout_constraintStart_toStartOf="@+id/booster_2_image" />
+
+    <TextView
+        android:id="@+id/booster_3_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/x0"
+        app:layout_constraintBottom_toBottomOf="@+id/booster_3_image"
+        app:layout_constraintEnd_toStartOf="@+id/booster_4_image"
+        app:layout_constraintStart_toStartOf="@+id/booster_3_image" />
+
+    <TextView
+        android:id="@+id/booster_4_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:text="@string/x0"
+        app:layout_constraintBottom_toBottomOf="@+id/booster_4_image"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/booster_4_image" />
+
+    <TextView
+        android:id="@+id/Username_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="@string/username"
+        android:textColor="@android:color/black"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/coin_collector_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/_0_1000"
+        app:layout_constraintBottom_toBottomOf="@+id/coin_collector_medal"
+        app:layout_constraintEnd_toStartOf="@+id/coin_collector_medal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/coin_collector_medal" />
+
+    <TextView
+        android:id="@+id/coin_giver_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="@string/_0_1000"
+        app:layout_constraintBottom_toTopOf="@+id/coin_giver_medal"
+        app:layout_constraintEnd_toEndOf="@+id/coin_giver_medal"
+        app:layout_constraintStart_toStartOf="@+id/coin_giver_medal" />
+
+    <TextView
+        android:id="@+id/net_worth_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="4dp"
+        android:text="@string/_0_100_000"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/Username_text" />
+
+    <TextView
+        android:id="@+id/coin_getter_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:text="@string/_0_1000"
+        app:layout_constraintBottom_toTopOf="@+id/coin_getter_medal"
+        app:layout_constraintEnd_toEndOf="@+id/coin_getter_medal"
+        app:layout_constraintStart_toStartOf="@+id/coin_getter_medal" />
+
+    <TextView
+        android:id="@+id/single_day_coin_collector_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/_0_50"
+        app:layout_constraintBottom_toBottomOf="@+id/single_day_coin_collector_medal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/single_day_coin_collector_medal"
+        app:layout_constraintTop_toTopOf="@+id/single_day_coin_collector_medal" />
+
+</android.support.constraint.ConstraintLayout>

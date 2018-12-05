@@ -14,6 +14,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_bank.*
 
 
+
 class BankActivity : AppCompatActivity() {
 
     private val tag = "BankActivity"
@@ -22,11 +23,16 @@ class BankActivity : AppCompatActivity() {
 
     private var username = ""
     private var accountId = ""
-    private var profit = 0.0
+
+    private var netWorth = 0.0
+    private var coinGiven = 0
+    private var coinGotten = 0
+
     private var dolr = 0.0
     private var peny = 0.0
     private var quid = 0.0
     private var shil = 0.0
+
     private var coinList = ArrayList<CoinInfo>()
     private var collectedCoinList = ArrayList<CoinInfo>()
     private var coinGivenByOthers = ArrayList<CoinInfo>()
@@ -53,6 +59,9 @@ class BankActivity : AppCompatActivity() {
         firestoreUserInfo = firestore?.collection("Users")?.document(accountId)
         firestoreUserWallet = firestore?.collection("Users")?.document(username)
 
+        loadAchievement()
+
+        //check if selected coins exceed the daily limit of bankable coin before allowing bank in
         bank_in_button.setOnClickListener {
             var giftedCoins = 0
             for(coins in selectedCoinList){
@@ -74,29 +83,23 @@ class BankActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext,"you need to have exactly 25 banked in coins to start gifting coins",
                         Toast.LENGTH_SHORT).show()
             }else{
-                //gifter name
-                //giftee name
-                //create coin id with val,currency,CoingiftedByothers,coinGivername
                 giftCoin()
             }
         }
+        getCoins()
+
     }
 
     override fun onStart() {
         super.onStart()
-        getCoins()
     }
 
-    override fun onStop() {
-        super.onStop()
-        //update net worth
-        firestoreUserInfo?.get()?.addOnSuccessListener {document ->
-            if(document != null) {
-                val netWorth = document["Net worth"] as Double
-                firestoreUserInfo?.update("Net worth", (netWorth + profit))
-            }
-        }
-
+    override fun onPause() {
+        super.onPause()
+        //update achievement
+        firestoreUserInfo?.update("Net worth", netWorth)
+        firestoreUserInfo?.update("Coin giver", coinGiven)
+        firestoreUserInfo?.update("Coin getter", coinGotten)
     }
 
     override fun onDestroy() {
@@ -108,6 +111,16 @@ class BankActivity : AppCompatActivity() {
         if(dialogUsername != null){
             dialogUsername?.dismiss()
             dialogUsername = null
+        }
+    }
+
+    private fun loadAchievement(){
+        firestoreUserInfo?.get()?.addOnSuccessListener {document->
+            if(document != null){
+                coinGiven = document["Coin giver"].toString().toInt()
+                coinGotten = document["Coin getter"].toString().toInt()
+                netWorth = document["Net worth"].toString().toDouble()
+            }
         }
     }
 
@@ -128,7 +141,6 @@ class BankActivity : AppCompatActivity() {
                         .setPositiveButton("Confirm") { _, _ ->
                             val usernameStr = usernameEditText.text.toString()
 
-                            //for(i in 1..document.data?.size!!){
                             for(i in 1..document.data?.size!!){
 
                                 //no gifting to self
@@ -160,6 +172,7 @@ class BankActivity : AppCompatActivity() {
                                             //set coinGivenToOthers of selected coins in own wallet to true
                                             for(i in 0..(selectedCoinList.size-1)){
                                                 firestoreUserWallet?.update("coin${selectedCoinList[i].coinNumInWallet}.coinGivenToOthers",true)
+                                                coinGiven++ //update achievement value
                                             }
 
 
@@ -205,16 +218,19 @@ class BankActivity : AppCompatActivity() {
                                         coin.currency == "QUID" -> multiplier = quid
                                         coin.currency == "SHIL" -> multiplier = shil
                                     }
-                                    profit += coin.value*multiplier
+                                    netWorth += coin.value*multiplier
 
+                                    if(coin.coinGiverName != ""){
+                                        coinGotten++ //update achievement value
+                                    }
                                     //remove selected coin
                                     selectedCoinList.remove(coin)
-                                    numberOfBankedInCoins++
+                                    //numberOfBankedInCoins++
                         }
                     }
 
-                    val updateText = "$numberOfBankedInCoins coin(s) banked in"
-                    number_of_coins_text.text = updateText
+                    //val updateText = "$numberOfBankedInCoins coin(s) banked in"
+                    //number_of_coins_text.text = updateText
                     //reset the recycler view
                     numberOfBankedInCoins = 0
                     coinGivenByOthers = ArrayList()
@@ -235,17 +251,17 @@ class BankActivity : AppCompatActivity() {
                     if (document != null) {
                         Log.d(tag, "DocumentSnapshot data: " + document.data)
                         if (document.data != null || document.data?.isNotEmpty()!!) {
-
+                            println("SSSSSSSSSS"+document.data?.size!!)
                             for (i in 1..(document.data?.size!!)) {
                                 //coin is used if it is banked in or given to others
                                 if(document["coin$i.bankedIn"] == false && document["coin$i.coinGivenToOthers"] == false){
 
                                     //if coin is given by others and not banked in yet
                                     if(document["coin$i.coinGivenByOthers"] == true){
-                                        coinGivenByOthers.add(CoinInfo(document["coin$i.value"] as Double,document["coin$i.currency"].toString(),i,document["coin$i.coinGiverName"].toString()))
-
+                                        coinGivenByOthers.add(CoinInfo(document["coin$i.value"].toString().toDouble(),document["coin$i.currency"].toString(),i,document["coin$i.coinGiverName"].toString()))
+                                    //self collected coins
                                     }else {
-                                        collectedCoinList.add(CoinInfo(document["coin$i.value"] as Double, document["coin$i.currency"].toString(), i, ""))
+                                        collectedCoinList.add(CoinInfo(document["coin$i.value"].toString().toDouble(), document["coin$i.currency"].toString(), i, ""))
 
                                     }
                                 //count the number of banked in coins
