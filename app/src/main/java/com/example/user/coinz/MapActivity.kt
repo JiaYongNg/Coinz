@@ -68,14 +68,25 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     // Format: YYYY/MM/DD
     private val preferencesFile = "MyPrefsFile"
     // for storing preferences
+
+    //used when collecting coin
     private var username : String? = ""
     private var walletDate : String = ""
-    private var coinNumberForWallet = 1
+    private var coinIndexForWallet = 1
     private var walletData = HashMap<String, Any?>()
 
-    private var totalCoinCollected = 0 //reset this after adding coin to firestore wallet
+    //used for achievements
+    private var totalCoinCollected = 0
     private var coinCollectedToday = 0
     private var coinCollectedTodayAchievement = 0
+
+    //used for daily login values
+    private var loginStreak = 0
+    private var coinWithDoubleVal = 0
+    private var booster4Quantity = 0
+
+    //used when switching to another activity
+    private var switchToAnotherActivity = false
 
     private var dialogUsername : Dialog? = null
     private var dialogLogOut : Dialog? = null
@@ -121,24 +132,28 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
 
-        btn2_button.setOnClickListener { _->bankActivity()}
-        already_have_account_text_view.setOnClickListener { _->shopActivity()}
-
+        btn2_button.setOnClickListener { updateUserInfo { bankActivity()}}
+        already_have_account_text_view.setOnClickListener { updateUserInfo { shopActivity()}}
+        button.setOnClickListener { updateUserInfo { userInfoActivity()} }
         firstLoginCheck()
+
     }
     private fun userInfoActivity(){
+        switchToAnotherActivity = true
         val intent = Intent(this, UserInfoActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
         startActivity(intent)
     }
     private fun shopActivity(){
+        switchToAnotherActivity = true
         val intent = Intent(this, ShopActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
         startActivity(intent)
     }
     private fun bankActivity(){
+        switchToAnotherActivity = true
         val intent = Intent(this, BankActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
@@ -148,6 +163,53 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         intent.putExtra("SHIL",DownloadCompleteRunner.shil)
         startActivity(intent)
     }
+
+    //used when switching activity or logging out
+    private fun updateUserInfo(innerFunc:() -> Unit){
+        firestoreUserWallet?.update(walletData)?.addOnCompleteListener{
+            totalCoinCollected += walletData.size
+            coinCollectedToday += walletData.size
+
+            //update achievement
+            firestoreUserInfo?.update("Collect # coins",totalCoinCollected)?.addOnCompleteListener{
+
+                firestoreUserInfo?.update("Collect # coins in a day tracker",coinCollectedToday)?.addOnCompleteListener {
+
+                    firestoreUserInfo?.update("Coin with double value", coinWithDoubleVal)?.addOnCompleteListener {
+
+                        //update achievement on if # coin collected today > achievement value
+                        if (coinCollectedToday > coinCollectedTodayAchievement) {
+                            firestoreUserInfo?.update("Collect # coins in a day", coinCollectedToday)?.addOnCompleteListener {
+
+                                //wait for update to complete before executing innerFunc
+                                Log.d(tag,"number of coins in wallet = ${walletData.size}")
+                                Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")
+                                DownloadCompleteRunner.numberOfCoinsinWallet += walletData.size
+
+                                //reset walletData
+                                walletData = HashMap()
+                                coinIndexForWallet = 1
+                                innerFunc()
+                            }
+                        } else {
+                            Log.d(tag,"number of coins in wallet = ${walletData.size}")
+                            Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")
+                            DownloadCompleteRunner.numberOfCoinsinWallet += walletData.size
+
+                            //reset walletData
+                            walletData = HashMap()
+                            coinIndexForWallet = 1
+                            innerFunc()
+
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
     //creates a log Out dialog
     private fun logOut(){
         dialogLogOut = AlertDialog.Builder(this)
@@ -155,42 +217,21 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             .setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes")
             { _, _ ->
-                //store collected Coins to wallet before sign out
-                firestoreUserWallet?.update(walletData)?.addOnCompleteListener{
-                    totalCoinCollected += walletData.size
-                    coinCollectedToday += walletData.size
-                    //update achievement
-                    firestoreUserInfo?.update("Collect # coins",totalCoinCollected)?.addOnCompleteListener{
-                        firestoreUserInfo?.update("Collect # coins in a day tracker",coinCollectedToday)?.addOnCompleteListener {
-                            if(coinCollectedToday > coinCollectedTodayAchievement){
-                                firestoreUserInfo?.update("Collect # coins in a day",coinCollectedToday)?.addOnCompleteListener {
-                                    FirebaseAuth.getInstance().signOut()
-                                    Log.d(tag,"logging out")
-                                    val intent = Intent(this, MainActivity::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                }
-                            }else{
-                                FirebaseAuth.getInstance().signOut()
-                                Log.d(tag,"logging out")
-                                val intent = Intent(this, MainActivity::class.java)
-                                startActivity(intent)
-                                finish()
-                            }
-                        }
-
-                    }
-
-
-
-                }
-
+                updateUserInfo { performLogOut() }
             }
+
             .setNegativeButton("No")
             { _, _ ->
                 Log.d(tag,"Not logging out")
             }
             .show()
+    }
+    private fun performLogOut(){
+        FirebaseAuth.getInstance().signOut()
+        Log.d(tag,"logging out")
+        val intent = Intent(this, MainActivity::class.java)
+        startActivity(intent)
+        finish()
     }
     //check if this is user's first login, else get user's username from database
     private fun firstLoginCheck(){
@@ -214,6 +255,9 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     coinCollectedToday = document.get("Collect # coins in a day tracker").toString().toInt()
                     coinCollectedTodayAchievement = document.get("Collect # coins in a day").toString().toInt()
                     totalCoinCollected = document.get("Collect # coins").toString().toInt()
+                    coinWithDoubleVal = document.get("Coin with double value").toString().toInt()
+                    loginStreak = document.get("Login streak").toString().toInt()
+                    booster4Quantity = document.get("Booster 4").toString().toInt()
 
                     firestoreUserWallet = firestore?.collection("Users")?.document(username!!)
                     Log.d(tag, "logged in user's username is $username")
@@ -275,6 +319,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                             //create a link from the account UID to the username and initialise all data
                             val usernameData = HashMap<String, Any?>()
                             usernameData["Username"] = usernameStr
+                            usernameData["walletDate"] = ""
                             usernameData["Net worth"] = 0.0
                             usernameData["Booster 1"] = 0
                             usernameData["Booster 2"] = 0
@@ -286,6 +331,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                             usernameData["Coin giver"] = 0
                             usernameData["Coin getter"] = 0
                             usernameData["Login streak"] = 0
+                            usernameData["Coin with double value"] = 0
 
                             firestoreUserInfo?.set(usernameData)
                             username = usernameStr
@@ -333,35 +379,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     {
         super.onPause()
         mapView?.onPause()
-        println("RRRRRRRRRRR"+walletData.size)
-        //if user did not log out, store collected coin to wallet and update achievement value
-        if(mAuth?.currentUser != null && coinNumberForWallet != 1){
-            totalCoinCollected += walletData.size
-            coinCollectedToday += walletData.size
-            println("PPPPPPPPPPPPP"+totalCoinCollected)
-            println(coinCollectedToday)
-            println(walletData.size)
-            firestoreUserWallet?.update(walletData)?.addOnSuccessListener {
-
-                firestoreUserInfo?.update("Collect # coins",totalCoinCollected)
-                firestoreUserInfo?.update("Collect # coins in a day tracker",coinCollectedToday)
-
-                if(coinCollectedToday > coinCollectedTodayAchievement){
-                    //update achievement
-                    firestoreUserInfo?.update("Collect # coins in a day",coinCollectedToday)
-                }
-                Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")}
-                println("TTTTTTTTTTT"+DownloadCompleteRunner.numberOfCoinsinWallet)
-                DownloadCompleteRunner.numberOfCoinsinWallet += walletData.size
-                println("UUUUUUUUUUU"+DownloadCompleteRunner.numberOfCoinsinWallet)
-
-            //reset walletData
-                walletData = HashMap()
-                coinNumberForWallet = 1
-
-
+        //if home or back button is pressed
+        if(mAuth?.currentUser != null && coinIndexForWallet != 1 && !switchToAnotherActivity) {
+            updateUserInfo { }
+        }else{
+            //reset this value
+            switchToAnotherActivity = false
         }
-
     }
     override fun onStop()
     {
@@ -518,29 +542,74 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         if(distance <= 1000){//for testing
             Toast.makeText(applicationContext,"coin collected",Toast.LENGTH_SHORT).show()
 
+            val date = Calendar.getInstance().time
+            val dateFormat = SimpleDateFormat("yyyy/MM/dd")
+            val currentDate = dateFormat.format(date)
+
+
+
             //if this is the first collected coin, then update the userInfo
             //walletDate with the current date
-            if(DownloadCompleteRunner.numberOfCoinsinWallet == 0){
-                val date = Calendar.getInstance().time
-                val dateFormat = SimpleDateFormat("yyyy/MM/dd")
-                val currentDate = dateFormat.format(date)
-                firestoreUserInfo?.update("walletDate",currentDate)
-            }
+            //check login streak when collecting the first coin of the day as well
+            if(DownloadCompleteRunner.numberOfCoinsinWallet == 0 && walletData.size == 0){
+                //check that this is not a newly created account before calculating date difference
+                if(walletDate != "") {
+                    //perform date calculation to update login streak
+                    val walletDate2 = dateFormat.parse(walletDate)
+                    val currentDate2 = dateFormat.parse(currentDate)
+                    val dateDiff = (currentDate2.time - walletDate2.time) / (1000 * 60 * 60 * 24)
 
+                    //login streak increases
+                    //login streak rewards are given here
+                    if(dateDiff.toInt() == 1){
+                        if(loginStreak in 0..5){
+                            loginStreak++
+                            coinWithDoubleVal = loginStreak
+                            Toast.makeText(applicationContext,"Login streak is $loginStreak, " +
+                                    "the next $coinWithDoubleVal coins you collect will have doubled value",Toast.LENGTH_LONG).show()
+                        }else{
+                            //day 7 gives a booster
+                            booster4Quantity++
+                            firestoreUserInfo?.update("Booster 4",booster4Quantity)
+                            Toast.makeText(applicationContext,"You gained a booster 4 for achieving 7 day login streak",Toast.LENGTH_LONG).show()
+                            //reset login streak at day 7
+                            loginStreak = 0
+                        }
+
+                    }//no consecutive login, login streak drops back to 1
+                    else{
+                        loginStreak = 1
+                        coinWithDoubleVal = 1
+                    }
+                }else{
+                    //user's first login to an account
+                    loginStreak = 1
+                    coinWithDoubleVal = 1
+
+                }
+                firestoreUserInfo?.update("Login streak", loginStreak)
+                firestoreUserInfo?.update("walletDate",currentDate)
+                walletDate = currentDate
+            }
 
 
             val coinData = HashMap<String, Any>()
             val valueCurrency = coin.snippet.split(" ")
             coinData["id"] = coin.title
-            coinData["value"] = valueCurrency[0].toDouble()
+
+            if(coinWithDoubleVal>0){
+                coinData["value"] =valueCurrency[0].toDouble()*2
+                coinWithDoubleVal--
+            }else
+                coinData["value"] =valueCurrency[0].toDouble()
+
             coinData["currency"] = valueCurrency[1]
             coinData["bankedIn"] = false
             coinData["coinGivenToOthers"] = false
             coinData["coinGivenByOthers"] = false
             coinData["coinGiverName"] = ""
-            walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinNumberForWallet)}" ] = coinData
-            println("QQQQQQQ"+walletData.size)
-            coinNumberForWallet++
+            walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinIndexForWallet)}" ] = coinData
+            coinIndexForWallet++
             Log.d(tag,"collected coin's data is "+coinData.toString())
             map?.removeMarker(coin)
 

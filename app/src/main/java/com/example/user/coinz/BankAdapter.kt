@@ -9,7 +9,6 @@ import android.view.View
 import android.widget.Toast
 import kotlinx.android.synthetic.main.layout_bank.view.*
 import java.text.DecimalFormat
-import java.math.RoundingMode
 
 class BankAdapter(private var coinList:ArrayList<BankActivity.CoinInfo>, private var selectedCoinList:ArrayList<BankActivity.CoinInfo>): RecyclerView.Adapter<CoinViewHolder>() {
     //round up the UI displayed numbers to 3 decimal places

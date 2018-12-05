@@ -251,7 +251,6 @@ class BankActivity : AppCompatActivity() {
                     if (document != null) {
                         Log.d(tag, "DocumentSnapshot data: " + document.data)
                         if (document.data != null || document.data?.isNotEmpty()!!) {
-                            println("SSSSSSSSSS"+document.data?.size!!)
                             for (i in 1..(document.data?.size!!)) {
                                 //coin is used if it is banked in or given to others
                                 if(document["coin$i.bankedIn"] == false && document["coin$i.coinGivenToOthers"] == false){
