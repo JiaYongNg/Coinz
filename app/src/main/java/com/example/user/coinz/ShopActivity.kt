@@ -43,17 +43,14 @@ class ShopActivity : AppCompatActivity() {
             }
         }
 
-        back_button.setOnClickListener {
-            val intent = Intent(this, MapActivity::class.java)
-            startActivity(intent)
-        }
-
         booster_1_image.setOnClickListener { selectBooster(1) }
         booster_2_image.setOnClickListener { selectBooster(2) }
         booster_3_image.setOnClickListener { selectBooster(3) }
         booster_4_image.setOnClickListener { selectBooster(4) }
 
     }
+
+
     override fun onDestroy() {
         super.onDestroy()
         if(dialogBuyBooster != null){

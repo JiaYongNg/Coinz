@@ -102,6 +102,8 @@ class BankActivity : AppCompatActivity() {
         firestoreUserInfo?.update("Coin getter", coinGotten)
     }
 
+
+
     override fun onDestroy() {
         super.onDestroy()
         if(dialogBankIn != null){
@@ -268,7 +270,7 @@ class BankActivity : AppCompatActivity() {
                                     numberOfBankedInCoins++
                                 }
                             }
-                            val updateText = "$numberOfBankedInCoins coin(s) banked in"
+                            val updateText = "$numberOfBankedInCoins coin(s)\nbanked in"
                             number_of_coins_text.text = updateText
 
                             coinGivenByOthers.sort()

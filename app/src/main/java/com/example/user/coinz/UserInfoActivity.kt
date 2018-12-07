@@ -1,24 +1,37 @@
 package com.example.user.coinz
 
+import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Intent
 import android.content.res.ColorStateList
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.design.widget.Snackbar
 import android.support.v4.content.ContextCompat
 import android.support.v4.widget.ImageViewCompat
+import android.support.v7.app.AlertDialog
+import android.util.Log
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_user_info.*
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Calendar
 
 class UserInfoActivity : AppCompatActivity() {
 
     private val tag = "BankActivity"
-    private var dialogBuyBooster : Dialog? = null
+    private var dialogActiveBooster : Dialog? = null
+    private var dialogInactiveBooster : Dialog? = null
 
     private var username = ""
     private var accountId = ""
+
+    @SuppressLint("SimpleDateFormat")
+    private val dateFormat = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
 
     private var firestore: FirebaseFirestore? = null
     private var firestoreUserInfo: DocumentReference? = null
@@ -30,15 +43,28 @@ class UserInfoActivity : AppCompatActivity() {
         username = intent.getStringExtra("username")
         accountId = intent.getStringExtra("accountId")
         firestoreUserInfo = firestore?.collection("Users")?.document(accountId)
-        //booster image onclick
-        //settooltip
+
         getUserInfo()
 
 
     }
 
 
+
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if(dialogActiveBooster!= null){
+            dialogActiveBooster?.dismiss()
+            dialogActiveBooster = null
+        }
+        if(dialogInactiveBooster!= null){
+            dialogInactiveBooster?.dismiss()
+            dialogInactiveBooster = null
+        }
+    }
     private fun getUserInfo(){
+
         firestoreUserInfo?.get()?.addOnSuccessListener {document->
             if(document != null){
                 Username_text.text = username
@@ -50,11 +76,20 @@ class UserInfoActivity : AppCompatActivity() {
                 val coinCollectedToday = document["Collect # coins in a day"].toString().toInt()
 
                 //achievements
-                setAchievementProperty(net_worth_medal,net_worth_text,netWorth,10000,50000,100000)
-                setAchievementProperty(coin_giver_medal,coin_giver_text,coinGiver,100,500,1000)
-                setAchievementProperty(coin_getter_medal,coin_getter_text,coinGetter,100,500,1000)
-                setAchievementProperty(coin_collector_medal,coin_collector_text,totalCoinCollected,100,500,1000)
-                setAchievementProperty(single_day_coin_collector_medal,single_day_coin_collector_text,coinCollectedToday,10,25,50)
+                setAchievementProperty(net_worth_medal,"Net Worth",
+                        net_worth_text,netWorth,10000,50000,100000)
+
+                setAchievementProperty(coin_giver_medal,"Give coins",
+                        coin_giver_text,coinGiver,100,500,1000)
+
+                setAchievementProperty(coin_getter_medal,"Bank in coins given by other players",
+                        coin_getter_text,coinGetter,100,500,1000)
+
+                setAchievementProperty(coin_collector_medal,"Collect coins on the map",
+                        coin_collector_text,totalCoinCollected,100,500,1000)
+
+                setAchievementProperty(single_day_coin_collector_medal,"Collect coins on the map in a single day",
+                        single_day_coin_collector_text,coinCollectedToday,10,25,50)
 
                 //boosters in inventory
                 val booster1Text = "x${document["Booster 1"]}"
@@ -66,13 +101,27 @@ class UserInfoActivity : AppCompatActivity() {
                 booster_3_text.text = booster3Text
                 booster_4_text.text = booster4Text
 
+                val boosterActiveUntil = document["Booster active until"].toString()
+                setBoosterPorperty(booster_1_image, boosterActiveUntil,document["Booster 1"].toString().toInt(),1)
+                setBoosterPorperty(booster_2_image, boosterActiveUntil,document["Booster 2"].toString().toInt(),2)
+                setBoosterPorperty(booster_3_image, boosterActiveUntil,document["Booster 3"].toString().toInt(),3)
+                setBoosterPorperty(booster_4_image, boosterActiveUntil,document["Booster 4"].toString().toInt(),4)
+
+
+
+
             }
 
         }
     }
     //sets up the text and medal colour of the achiements
-    private fun setAchievementProperty(medalImage: ImageView,achievementText:TextView,
+    private fun setAchievementProperty(medalImage: ImageView,medalInfo:String,achievementText:TextView,
                                        achievementVal:Int,bronzeVal:Int,silverVal: Int,goldVal: Int){
+
+        medalImage.setOnClickListener { view->
+            Snackbar.make(view, medalInfo, Snackbar.LENGTH_LONG).show()
+        }
+
         when {
             achievementVal >= goldVal -> {
                 ImageViewCompat.setImageTintList(medalImage, ColorStateList.valueOf(ContextCompat.getColor(applicationContext, R.color.Gold)))
@@ -99,17 +148,94 @@ class UserInfoActivity : AppCompatActivity() {
         }
 
     }
-    //username
-    //achievement
-//    1. Collect # coins.
-//    2. Give other people # spare change.
-//    3. Get # spare change from other people.
-//    4. Collect # coins in a single day.
-//    5. Have a net worth of # in GOLD.
-    //inventory x25 tap to use
-    //4 boosters
-    //254,203,50
-    //189,207,211
-    //238,132,72
+
+    private fun setBoosterPorperty(boosterImage:ImageView, boosterActiveUntil:String,boosterQuantity:Int,boosterNum:Int){
+        //onclick check if there is booster in inventory
+        //check if there is active boost and ask if player wants to override it
+        //yes, then reduce the amount of booster
+        //calculate boosterActiveUntil and upload it to firestore, onComplete switch to Mapactivity
+        //boosterActiveUntil will be used in the MapActivity to check if booster is active
+
+        boosterImage.setOnClickListener {view->
+            if(boosterQuantity>0) {
+                //currentTime should be in here
+                val timeDiff =
+                        //not a newly created account
+                        if (boosterActiveUntil != "") {
+                            val now = Calendar.getInstance().time
+                            val currentTime = dateFormat.format(now)
+
+                            val boosterTimeUntil2 = dateFormat.parse(boosterActiveUntil)
+                            val currentTime2 = dateFormat.parse(currentTime)
+                            (boosterTimeUntil2.time - currentTime2.time)
+                        } else {
+                            0
+                        }
+
+                if (timeDiff > 0) {
+                    //dialog there is a booster active, are you sure you want to override
+                    dialogActiveBooster = AlertDialog.Builder(this)
+                            .setTitle("There is an active booster")
+                            .setMessage("Are you sure you want to override the duration of that booster with booster $boosterNum?")
+                            .setPositiveButton("OK") { _, _ ->
+                                //get the time now again
+                                val now = Calendar.getInstance().time
+                                val currentTime = dateFormat.format(now)
+                                val currentTime2 = dateFormat.parse(currentTime)
+                                val boosterActiveTime = dateFormat.format(currentTime2.time + boosterNum * 300000)
+
+                                val boosterData = HashMap<String, Any?>()
+                                boosterData["Booster $boosterNum"] = (boosterQuantity-1)
+                                boosterData["Booster active until"] = boosterActiveTime
+
+
+                                firestoreUserInfo?.update(boosterData)
+                                        ?.addOnSuccessListener {
+                                            val intent = Intent(this, MapActivity::class.java)
+                                            startActivity(intent)
+                                            finish()
+                                        }
+
+
+                            }.setNegativeButton("NO"){ _, _ ->
+
+                            }
+                            .show()
+
+                }else{
+                    //dialog: are you sure you want to use the booster?
+                    dialogInactiveBooster = AlertDialog.Builder(this)
+                            .setTitle("Activate booster")
+                            .setMessage("Are you sure you want to use booster $boosterNum now?")
+                            .setPositiveButton("OK") { _, _ ->
+                                //get the time now again
+                                val now = Calendar.getInstance().time
+                                val currentTime = dateFormat.format(now)
+                                val currentTime2 = dateFormat.parse(currentTime)
+                                val boosterActiveTime = dateFormat.format(currentTime2.time + boosterNum * 300000)
+
+                                val boosterData = HashMap<String, Any?>()
+                                boosterData["Booster $boosterNum"] = (boosterQuantity-1)
+                                boosterData["Booster active until"] = boosterActiveTime
+
+                                firestoreUserInfo?.update(boosterData)
+                                        ?.addOnSuccessListener {
+                                            val intent = Intent(this, MapActivity::class.java)
+                                            startActivity(intent)
+                                            finish()
+                                        }
+
+                            }.setNegativeButton("NO"){ _, _ ->
+
+                            }
+                            .show()
+                }
+            }else{
+                Snackbar.make(view, "You do not have any booster $boosterNum", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+
+    }
+
 
 }

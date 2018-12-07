@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Coinz</string>
     <string name="action_settings">Settings</string>
-    <string name="access_token">pk.eyJ1IjoiZmxpY2siLCJhIjoiY2pvc3hscG9qMGJncDNwczNpcGp5ZGt2bSJ9.mkj-MGIs3ojLHZTGB3XZQA
+    <string name="access_token">pk.eyJ1IjoiZmxpY2siLCJhIjoiY2pwYnFneDdiMnFicDNxbGs4OWp5NmVhbyJ9.CiR8jE9AMg7S7-ozeI6d5A
     </string>
     <string name="password">Password</string>
     <string name="create_account_here">Create account here</string>
@@ -30,4 +30,6 @@
     <string name="_0_1000">0/1000</string>
     <string name="_0_100_000">0/100,000</string>
     <string name="_0_50">0/50</string>
+    <string name="give_coin_s">Give coin(s)</string>
+    <string name="bank_in">Bank in</string>
 </resources>
