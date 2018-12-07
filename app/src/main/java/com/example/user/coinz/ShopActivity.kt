@@ -1,7 +1,6 @@
 package com.example.user.coinz
 
 import android.app.Dialog
-import android.content.Intent
 import android.graphics.Color
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
@@ -95,6 +94,7 @@ class ShopActivity : AppCompatActivity() {
                         .setMessage("You currently have ${Math.round(netWorth)} gold")
                         .setView(quantityEditText)
                         .setPositiveButton("Confirm") { _, _ ->
+
                             if (quantityEditText.text.isNotEmpty()){
                                 val quantity = quantityEditText.text.toString().toInt()
 
@@ -104,6 +104,7 @@ class ShopActivity : AppCompatActivity() {
                                 //update booster quantity in inventory and reduce net worth
                                 if (totalCost <= netWorth) {
                                     val storageQuantity = document["Booster $selectedBoosterNumber"].toString().toInt()
+
                                     firestoreUserInfo?.update("Net worth", (netWorth - totalCost))
                                             ?.addOnSuccessListener {
                                                 firestoreUserInfo?.update("Booster $selectedBoosterNumber", (storageQuantity + quantity))
@@ -112,6 +113,7 @@ class ShopActivity : AppCompatActivity() {
                                             }
 
                                 } else {
+                                    //purchase failed
                                     Toast.makeText(applicationContext, "Purchase failed,you were short of " +
                                             "${Math.round(totalCost - netWorth)} gold to make the purchase", Toast.LENGTH_LONG).show()
                                 }

@@ -6,12 +6,11 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.View
-import android.widget.Toast
 import kotlinx.android.synthetic.main.layout_bank.view.*
 import java.text.DecimalFormat
 
 class BankAdapter(private var coinList:ArrayList<BankActivity.CoinInfo>, private var selectedCoinList:ArrayList<BankActivity.CoinInfo>): RecyclerView.Adapter<CoinViewHolder>() {
-    //round up the UI displayed numbers to 3 decimal places
+    //round up the UI displayed numbers to 3 decimal places but not the actual coin value
     private val df = DecimalFormat("#.###")
 
     //create a view
@@ -37,7 +36,7 @@ class BankAdapter(private var coinList:ArrayList<BankActivity.CoinInfo>, private
 
 
 
-        //onClick the clicked coin would be highlighted and added to an arraylist
+        //onClick the clicked coin would be highlighted and added to an arrayList
         holder.view.setOnClickListener {
             if(!selectedCoinList.contains(currentCoin)){
                 //prevent adding the coin twice
@@ -51,6 +50,7 @@ class BankAdapter(private var coinList:ArrayList<BankActivity.CoinInfo>, private
             Log.d("Bank Activity","coin selected = ${selectedCoinList.size}")
             Log.d("BankActivity", "selected " + coinList[position].value.toString() + currentCoin.currency)
         }
+
         //by default, colour highlights are as follow
         if(selectedCoinList.contains(currentCoin)){
             holder.view.coin_text_view.setBackgroundColor(Color.GREEN)

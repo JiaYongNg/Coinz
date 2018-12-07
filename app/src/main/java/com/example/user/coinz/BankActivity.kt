@@ -59,7 +59,6 @@ class BankActivity : AppCompatActivity() {
         firestoreUserInfo = firestore?.collection("Users")?.document(accountId)
         firestoreUserWallet = firestore?.collection("Users")?.document(username)
 
-        loadAchievement()
 
         //check if selected coins exceed the daily limit of bankable coin before allowing bank in
         bank_in_button.setOnClickListener {
@@ -86,13 +85,12 @@ class BankActivity : AppCompatActivity() {
                 giftCoin()
             }
         }
+        //load achievement and get firestore wallet coins and display collected coins to UI
+        loadAchievement()
         getCoins()
 
     }
 
-    override fun onStart() {
-        super.onStart()
-    }
 
     override fun onPause() {
         super.onPause()
@@ -140,7 +138,8 @@ class BankActivity : AppCompatActivity() {
                         .setTitle("Enter the recipient's username")
                         .setMessage("You are gifting ${selectedCoinList.size} coin(s)")
                         .setView(usernameEditText)
-                        .setPositiveButton("Confirm") { _, _ ->
+                        .setPositiveButton("Confirm")
+                        { _, _ ->
                             val usernameStr = usernameEditText.text.toString()
 
                             for(i in 1..document.data?.size!!){
@@ -155,6 +154,7 @@ class BankActivity : AppCompatActivity() {
                                 firestore?.collection("Users")?.document(usernameStr)
                                     ?.get()?.addOnSuccessListener {document ->
                                         if(document != null){
+
                                             //add coin to other player's wallet
                                             val walletData = HashMap<String, Any?>()
                                             val numberOfCoins = document.data?.size!!
@@ -171,6 +171,7 @@ class BankActivity : AppCompatActivity() {
                                             }
                                             //update the coins gifted to the other player
                                             firestore?.collection("Users")?.document(usernameStr)?.update(walletData)
+
                                             //set coinGivenToOthers of selected coins in own wallet to true
                                             for(i in 0..(selectedCoinList.size-1)){
                                                 firestoreUserWallet?.update("coin${selectedCoinList[i].coinNumInWallet}.coinGivenToOthers",true)
@@ -193,6 +194,8 @@ class BankActivity : AppCompatActivity() {
                                 Toast.makeText(applicationContext,"Username invalid",Toast.LENGTH_SHORT).show()
                             }
 
+                        }
+                        .setNegativeButton("Cancel"){ _,_->
                         }
                         .show()
 
@@ -227,12 +230,9 @@ class BankActivity : AppCompatActivity() {
                                     }
                                     //remove selected coin
                                     selectedCoinList.remove(coin)
-                                    //numberOfBankedInCoins++
                         }
                     }
 
-                    //val updateText = "$numberOfBankedInCoins coin(s) banked in"
-                    //number_of_coins_text.text = updateText
                     //reset the recycler view
                     numberOfBankedInCoins = 0
                     coinGivenByOthers = ArrayList()
@@ -285,7 +285,7 @@ class BankActivity : AppCompatActivity() {
                     }
                 }
                 ?.addOnFailureListener { exception ->
-                    Log.e("MapActivity", "get user wallet failed with ", exception)
+                    Log.e("BankActivity", "get user wallet failed with ", exception)
                 }
     }
 

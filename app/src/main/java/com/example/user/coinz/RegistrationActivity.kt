@@ -69,9 +69,6 @@ class RegistrationActivity : AppCompatActivity() {
 
 
 
-        Log.d(tag, "Email is: $email")
-        Log.d(tag, "Password: $password")
-
         // Firebase Authentication to create a user with email and password
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password).addOnCompleteListener {
             if (it.isSuccessful) {
@@ -81,7 +78,6 @@ class RegistrationActivity : AppCompatActivity() {
 
                 val intent = Intent(this, MainActivity::class.java)
                 startActivity(intent)
-                finish()
             } else {
                 Toast.makeText(this, "Authentication failed." + it.exception, Toast.LENGTH_LONG).show()
             }

@@ -1,10 +1,7 @@
 package com.example.user.coinz
 
 
-import android.app.Activity
 import android.app.Dialog
-import android.app.DialogFragment
-import android.arch.lifecycle.Lifecycle
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.Marker
@@ -26,7 +23,7 @@ import com.mapbox.mapboxsdk.plugins.locationlayer.LocationLayerPlugin
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.CameraMode
 import com.mapbox.mapboxsdk.plugins.locationlayer.modes.RenderMode
 
-import kotlinx.android.synthetic.main.activity_map.* //for fab,toolbar
+import kotlinx.android.synthetic.main.activity_map.*
 import android.content.Context
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
@@ -40,32 +37,22 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.text.SimpleDateFormat
 import android.content.Intent
-import android.content.res.ColorStateList
-import android.content.res.Resources
 import android.graphics.*
 import android.location.Location
 import android.os.CountDownTimer
-import android.support.annotation.DrawableRes
 import android.support.v4.content.ContextCompat
-import android.support.v4.widget.ImageViewCompat
 import android.support.v7.app.AlertDialog
-import android.support.v7.content.res.AppCompatResources.getDrawable
 import android.text.InputFilter
 import android.widget.EditText
-import android.widget.ImageView
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUserMetadata
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.mapbox.mapboxsdk.annotations.IconFactory
-import com.mapbox.mapboxsdk.storage.Resource
-import kotlinx.android.synthetic.main.activity_user_info.*
 
-import org.json.JSONArray
+
 import org.json.JSONObject
-import java.lang.Character.FORMAT
 import java.lang.ref.WeakReference
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -140,10 +127,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
 
 
-        login_button_login.setOnClickListener{
-            logOut()
-        }
-
         mAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
@@ -154,14 +137,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
 
-        btn2_button.setOnClickListener { updateUserInfo { bankActivity()}}
-        already_have_account_text_view.setOnClickListener { updateUserInfo { shopActivity()}}
-        //already_have_account_text_view.setOnClickListener { checkBoosterActive()}
-        button.setOnClickListener { updateUserInfo { userInfoActivity()} }
-        textView2.setOnClickListener {  }
+        //sets up the four buttons on the Map activity
+        log_out_button.setOnClickListener { logOut() }
+        bank_button.setOnClickListener{ updateUserInfo { bankActivity()} }
+        shop_button.setOnClickListener { updateUserInfo { shopActivity()} }
+        my_profile_button.setOnClickListener { updateUserInfo { userInfoActivity()} }
 
         firstLoginCheck()
-        Log.d(tag,"MAP CREATE")
 
     }
 
@@ -228,7 +210,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     }
 
 
-
     //creates a log Out dialog
     private fun logOut(){
         dialogLogOut = AlertDialog.Builder(this)
@@ -252,6 +233,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         startActivity(intent)
         finish()
     }
+
     //check if this is user's first login, else get user's username from database
     private fun firstLoginCheck(){
         firestoreUserInfo?.get()?.addOnSuccessListener {document ->
@@ -265,6 +247,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             }
         }
     }
+    //get username and achievement stats of existing player
     private fun getFireStoreUsername(){
         firestoreUserInfo?.get()
             ?.addOnSuccessListener { document ->
@@ -281,7 +264,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     firestoreUserWallet = firestore?.collection("Users")?.document(username!!)
                     Log.d(tag, "logged in user's username is $username")
 
-                    //need username to check is booster is active
+                    //need username to check if booster is active
                     checkBoosterActive()
 
                     //getMapAsync is in firstLoginCheck because
@@ -298,7 +281,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             }
     }
 
-    //prompt player to write their username
+    //prompt new player to write their username
     private fun promptUsername(){
         firestoreUsernames?.get()?.addOnSuccessListener { document ->
             if (document != null) {
@@ -312,7 +295,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 usernameEditText.hint = "Enter username"
                 dialogUsername = AlertDialog.Builder(this)
                     .setTitle("Add username")
-                    .setMessage("Username must be alphanumeric")
+                    .setMessage("Username must be alphanumeric and be 16 characters or less")
                     .setView(usernameEditText)
                     .setCancelable(false)
                     .setPositiveButton("Confirm") { _, _ ->
@@ -324,8 +307,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                                 usernameTaken = true
                             }
                         }
-                        //check if username is alphanumeric
-                        if(!usernameStr.matches(Regex("[A-Za-z0-9]+"))){
+                        //check if username is alphanumeric and less than 16 characters
+                        if(!usernameStr.matches(Regex("[A-Za-z0-9]+")) || usernameStr.length > 16){
                             usernameInvalid = true
                         }
                         //username is not valid
@@ -402,49 +385,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
     }
 
-    //cannot use 2 booster at a time
-    //countdown to end
-    //12am counts
-
-
-
-
-    private fun midnightCountDown(){
-        val now = Calendar.getInstance().time
-        val millisInDay = 86400000
-        val millisTillMidnight = millisInDay - (now.time % millisInDay)
-
-
-        val timeFormat = "%02d:%02d:%02d"
-        midnightTimer = object : CountDownTimer(millisTillMidnight, 1000) {
-        //midnightTimer = object : CountDownTimer(10000, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                textView2.setBackgroundColor(Color.WHITE)
-                textView2.text = ("Midnight \n"+String.format
-                    (timeFormat,
-                        TimeUnit.MILLISECONDS.toHours(millisUntilFinished),
-                        TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished) - TimeUnit.HOURS.toMinutes(
-                                TimeUnit.MILLISECONDS.toHours(millisUntilFinished)),
-                        TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished) - TimeUnit.MINUTES.toSeconds(
-                                TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished))
-                    )
-                )
-
-            }
-            override fun onFinish(){
-                midnightDialog()
-
-            }
-        }.start()
-    }
     private fun startBoosterTimer(millisInFuture:Long){
         boosterActive = true
         val timeFormat = "%02d:%02d"
 
         boosterTimer = object : CountDownTimer(millisInFuture, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                already_have_account_text_view.setBackgroundColor(Color.WHITE)
-                already_have_account_text_view.text = ("Booster active for \n"+String.format
+                booster_timer_text.text = ("Booster active for \n"+String.format
                 (timeFormat,
                         TimeUnit.MILLISECONDS.toMinutes(millisUntilFinished) ,
                         TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished) - TimeUnit.MINUTES.toSeconds(
@@ -455,10 +402,45 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             override fun onFinish(){
                 Toast.makeText(applicationContext,"Booster has expired",Toast.LENGTH_LONG).show()
                 boosterActive = false
-                already_have_account_text_view.text = ""
+                booster_timer_text.text = ""
             }
         }.start()
     }
+
+
+
+    //counts down to midnight
+    private fun midnightCountDown(){
+        val now = Calendar.getInstance().time
+        val millisInDay = 86400000
+        val millisTillMidnight = millisInDay - (now.time % millisInDay)
+
+
+        val timeFormat = "%02d:%02d:%02d"
+        val timeTillMidnight = (""+String.format
+            (timeFormat,
+                TimeUnit.MILLISECONDS.toHours(millisTillMidnight),
+                TimeUnit.MILLISECONDS.toMinutes(millisTillMidnight) - TimeUnit.HOURS.toMinutes(
+                        TimeUnit.MILLISECONDS.toHours(millisTillMidnight)),
+                TimeUnit.MILLISECONDS.toSeconds(millisTillMidnight) - TimeUnit.MINUTES.toSeconds(
+                        TimeUnit.MILLISECONDS.toMinutes(millisTillMidnight))
+            )
+        )
+
+        Log.d(tag,"there is $timeTillMidnight till midnight")
+
+        midnightTimer = object : CountDownTimer(millisTillMidnight, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+
+            }
+            override fun onFinish(){
+                midnightDialog()
+
+            }
+        }.start()
+    }
+
+    //restarts activity at 12am
     private fun midnightDialog(){
         midnightDialog = AlertDialog.Builder(this)
                 .setTitle("It is 12am now")
@@ -474,7 +456,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     //cancel timer
     private fun cancelTimer() {
         if(boosterTimer!=null) {
-            already_have_account_text_view.text = ""
+            booster_timer_text.text = ""
             boosterActive = false
             boosterTimer?.cancel()
         }
@@ -483,11 +465,24 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
     }
 
+    private fun cancelDialog(){
+        if (dialogUsername != null) {
+            dialogUsername?.dismiss()
+            dialogUsername = null
+        }
+        if(dialogLogOut != null){
+            dialogLogOut?.dismiss()
+            dialogLogOut = null
+        }
+        if(midnightDialog != null){
+            midnightDialog?.dismiss()
+            midnightDialog = null
+        }
+    }
     @SuppressWarnings("MissingPermission")
     override fun onStart(){
         super.onStart()
         mapView?.onStart()
-        Log.d(tag,"MAP START")
 
         if (locationEngine != null) {
 
@@ -504,7 +499,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     {
         super.onResume()
         mapView?.onResume()
-        Log.d(tag,"MAP RESUME")
 
         //used when switching activities
         if(username != ""){
@@ -541,8 +535,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
         storeDownloadDate()
         cancelTimer()
-        Log.d(tag,"MAP STOP")
-
 
     }
 
@@ -552,20 +544,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         if(locationEngine != null) {
             locationEngine?.deactivate()
         }
-        if (dialogUsername != null) {
-            dialogUsername?.dismiss()
-            dialogUsername = null
-        }
-        if(dialogLogOut != null){
-            dialogLogOut?.dismiss()
-            dialogLogOut = null
-        }
-        if(midnightDialog != null){
-            midnightDialog?.dismiss()
-            midnightDialog = null
-        }
+        cancelDialog()
         cancelTimer()
-        Log.d(tag,"MAP DESTROY")
 
     }
     override fun onSaveInstanceState(outState: Bundle?) {
@@ -579,7 +559,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         super.onLowMemory()
         mapView?.onLowMemory()
     }
-    //MAPBOXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
     override fun onMapReady(mapboxMap: MapboxMap?) {
         if (mapboxMap == null) {
@@ -599,7 +578,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     }
 
 
-
     private fun enableLocation() {
         if (PermissionsManager.areLocationPermissionsGranted(this)) {
             Log.d(tag, "Permissions are granted")
@@ -607,7 +585,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             initialiseLocationLayer()
         } else {
             Log.d(tag, "Permissions are not granted")
-            println("DDDDDDD")
             permissionsManager = PermissionsManager(this)
             permissionsManager.requestLocationPermissions(this)
         }
@@ -643,8 +620,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     cameraMode = CameraMode.TRACKING
                     renderMode = RenderMode.NORMAL
                 }
-                val lifeCycle = lifecycle
-                lifeCycle.addObserver(locationLayerPlugin)
+                lifecycle.addObserver(locationLayerPlugin)
             }
         }
     }
@@ -681,17 +657,12 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
     override fun onPermissionResult(granted: Boolean) {
         Log.d(tag, "[onPermissionResult] granted == $granted")
-        println("CCCCCCCCC")
         if (granted) {
-            println("AAAAABB")
             enableLocation()
         } else {
-            println("EEEEEEEEEEEEE")
             // Open a dialogue with the user
             Toast.makeText(applicationContext,"Permission denied",Toast.LENGTH_SHORT).show()
             finish()
-
-
         }
     }
 
@@ -703,8 +674,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         coinLocation.longitude = coin.position.longitude
         val distance = originLocation.distanceTo(coinLocation)
 
-        //if(distance <= 25){
-        if(distance <= 10000){//for testing
+        if(distance <= 25){
+        //if(distance <= 10000){//for testing
             Toast.makeText(applicationContext,"coin collected",Toast.LENGTH_SHORT).show()
 
             val date = Calendar.getInstance().time
@@ -713,7 +684,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
 
 
-            //if this is the first collected coin, then update the userInfo
+            //if this is the first collected coin, then update the userInfo's
             //walletDate with the current date
             //check login streak when collecting the first coin of the day as well
             if(DownloadCompleteRunner.numberOfCoinsinWallet == 0 && walletData.size == 0){
@@ -743,11 +714,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
                     }//no consecutive login, login streak drops back to 1
                     else{
+                        Toast.makeText(this,"Login streak is 1, the coin you just collected has doubled value",Toast.LENGTH_LONG).show()
                         loginStreak = 1
                         coinWithDoubleVal = 1
                     }
                 }else{
                     //user's first login to an account
+                    Toast.makeText(this, "Welcome to the game!",Toast.LENGTH_LONG).show()
                     loginStreak = 1
                     coinWithDoubleVal = 1
 
@@ -757,12 +730,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 walletDate = currentDate
             }
 
-
+            //collected coins are stored in a hash map
             val coinData = HashMap<String, Any>()
             val valueCurrency = coin.snippet.split(" ")
             coinData["id"] = coin.title
 
             var coinValue = valueCurrency[0].toDouble()
+            Log.d(tag,"coin value before multiplier = $coinValue")
             //login bonus
             if(coinWithDoubleVal>0){
                 coinValue *= 2
@@ -772,6 +746,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             if(boosterActive){
                 coinValue *= 1.5
             }
+            Log.d(tag,"coin vale after multipler = $coinValue")
             coinData["value"] = coinValue
             coinData["currency"] = valueCurrency[1]
             coinData["bankedIn"] = false
@@ -792,9 +767,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         return true
     }
 
-
-
-//JSONNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNnn
 
     private fun storeDownloadDate(){
         Log.d(tag,"[onStop] Storing lastDownloadDate of $downloadDate")
@@ -826,7 +798,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         // use "" as the default value (this might be the first time the app is run)
         downloadDate = settings.getString("lastDownloadDate","")
         // Write a message to ”logcat” (for debugging purposes)
-        //downloadDate = "2018/10/07"  //test to force download map
         Log.d(tag,"Recalled lastDownloadDate is $downloadDate")
 
         //file that stores the map
@@ -855,11 +826,11 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     object DownloadCompleteRunner : DownloadCompleteListener {
 
         var result : String? = null
-        private var walletCoinId = ArrayList<String>()                      //initialised by loadWallettoDevice(), store wallet's coins' id
+        private var walletCoinId = ArrayList<String>()               //initialised by loadWallettoDevice(), store wallet's coins' id
 
-        var numberOfCoinsinWallet = 0                                  //initialised by loadWallettoDevice()
+        var numberOfCoinsinWallet = 0                                //initialised by loadWallettoDevice()
 
-        var shil : Double = 0.0                                     //initialised by addCoinsToMap(map:MapboxMap?)
+        var shil : Double = 0.0                                      //initialised by addCoinsToMap()
         var dolr : Double = 0.0
         var quid : Double = 0.0
         var peny : Double = 0.0
@@ -870,7 +841,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         override fun emptyWallet(firestoreUserWallet: DocumentReference?){
             val emptyData = HashMap<String, Any?>()
             firestoreUserWallet?.set(emptyData)
-            //reset this array every time this method is called
+            //reset these 2 fields every time this method is called to flush out old data
             walletCoinId = ArrayList()
             numberOfCoinsinWallet = 0
         }
@@ -898,10 +869,9 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     Log.e("MapActivity", "get user wallet failed with ", exception)
                 }
 
-
         }
         override fun addCoinstoMap(map:MapboxMap?,context:Context){
-            val coinzMap = File("/data/data/com.example.user.coinz/files", "coinzmap.geojson")
+            val coinzMap = File(context.filesDir, "coinzmap.geojson")
             val mapContents = coinzMap.readText()
             val fc = FeatureCollection.fromJson(mapContents)
 
@@ -913,7 +883,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             peny = rates.getDouble("PENY")
 
 
-            //indicate how many coins are on the map for debugging purpose
             var coinOnMapNumber = 0
             for(feature in fc.features().orEmpty()) {
                 val coordinates = (feature.geometry() as Point).coordinates()
@@ -929,22 +898,19 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 val color = coinColor.replace("\"","").replace("#","")
                 val colorVal = Integer.parseInt(color,16)
 
-                //check if this coin is already collected before adding it to the map
-                val coin = Marker(MarkerOptions()
-                        .title(id)
-                        .snippet(valueCurrency)
-                        .position(LatLng(coordinates[1],coordinates[0])))
 
+                //check if this coin is already collected before adding it to the map
                 var coinNotOnMap = true
                 //if collectedCoins id and marker id not the same then add marker to map
                 if(numberOfCoinsinWallet != 0) {
                     for (i in 0..(numberOfCoinsinWallet - 1)) {
-                        if (walletCoinId[i] == coin.title) {
+                        if (walletCoinId[i] == id) {
                             coinNotOnMap = false
                         }
                     }
                 }
 
+                //set up marker icons
                 fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
                     val drawable = ContextCompat.getDrawable(context, drawableId)
 
@@ -990,33 +956,36 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     9 -> markerNumber = R.drawable.marker_9
                     10 -> markerNumber = R.drawable.marker_10
                 }
-                var markerColor = 0
+                var backgroundColor = 0
                 when(colorVal){
-                    255 -> markerColor = Color.BLUE
-                    32768 -> markerColor = Color.GREEN
-                    16711680 -> markerColor = Color.RED
-                    16768768 -> markerColor = Color.YELLOW
+                    255 -> backgroundColor = Color.BLUE
+                    32768 -> backgroundColor = Color.GREEN
+                    16711680 -> backgroundColor = Color.RED
+                    16768768 -> backgroundColor = Color.YELLOW
                 }
 
                 val iconFactory = IconFactory.getInstance(context)
                 val background = getBitmapFromVectorDrawable(context,R.drawable.marker_background)
                 val number = getBitmapFromVectorDrawable(context,markerNumber)
 
-                val marker = tintImage(background,number,markerColor)
+                val marker = tintImage(background,number,backgroundColor)
                 val icon = iconFactory.fromBitmap(marker)
 
 
                 if(coinNotOnMap || numberOfCoinsinWallet == 0) {
-
+                    //add coins to map
                     map?.addMarker(MarkerOptions()
                             .title(id)
                             .snippet(valueCurrency)
                             .icon(icon)
                             .position(LatLng(coordinates[1], coordinates[0])))
+
+                    //count the number of coins added to the map for debugging
                     coinOnMapNumber++
                 }
 
             }
+            //total sums up to 50
             Log.d("MapActivity","coinsOnMap = " + coinOnMapNumber.toString()
                     + ", coinsInWallet "  + numberOfCoinsinWallet.toString())
         }
@@ -1025,6 +994,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     class DownloadFileTask(private val caller : DownloadCompleteListener, private val map:MapboxMap?,
                            private val firestoreUserWallet: DocumentReference?, private val walletDate:String,
                            private val currentDate:String, private val context: WeakReference<Context>) : AsyncTask<String, Void, String>() {
+
         override fun doInBackground(vararg urls: String): String =
                 try {
                     loadFileFromNetwork(urls[0])
@@ -1040,7 +1010,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             val result = if (s.hasNext()) s.next() else ""
             s.close()
             return result
-        }//scanner copied from https://stackoverflow.com/questions/309424/how-to-read-convert-an-inputstream-into-a-string-in-java
+        }
 
 
 

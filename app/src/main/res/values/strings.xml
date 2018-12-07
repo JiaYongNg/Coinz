@@ -1,5 +1,5 @@
-<resources>
-    <string name="app_name">Coinz</string>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name" tools:ignore="PrivateResource">Coinz</string>
     <string name="action_settings">Settings</string>
     <string name="access_token">pk.eyJ1IjoiZmxpY2siLCJhIjoiY2pwYnFneDdiMnFicDNxbGs4OWp5NmVhbyJ9.CiR8jE9AMg7S7-ozeI6d5A
     </string>
@@ -25,11 +25,15 @@
     <string name="net_worth_medal">net_worth_medal</string>
     <string name="coin_collector_medal">coin_collector_medal</string>
     <string name="single_day_coin_collector_medal">single_day_coin_collector_medal</string>
-    <string name="inventory_tap_to_use_boosters">Inventory - tap to use boosters</string>
     <string name="x0">x0</string>
     <string name="_0_1000">0/1000</string>
     <string name="_0_100_000">0/100,000</string>
     <string name="_0_50">0/50</string>
     <string name="give_coin_s">Give coin(s)</string>
     <string name="bank_in">Bank in</string>
+    <string name="log_out">Log out</string>
+    <string name="bank">Bank</string>
+    <string name="my_profile">My profile</string>
+    <string name="shop">Shop</string>
+    <string name="welcome_to_coinz">Welcome to Coinz!</string>
 </resources>
