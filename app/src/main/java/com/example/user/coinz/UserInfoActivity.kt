@@ -11,8 +11,10 @@ import android.support.v4.content.ContextCompat
 import android.support.v4.widget.ImageViewCompat
 import android.support.v7.app.AlertDialog
 import android.util.Log
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_user_info.*
@@ -24,6 +26,7 @@ class UserInfoActivity : AppCompatActivity() {
     private val tag = "UserInfoActivity"
     private var dialogActiveBooster : Dialog? = null
     private var dialogInactiveBooster : Dialog? = null
+    private var dialogInternet : Dialog? = null
 
     private var username = ""
     private var accountId = ""
@@ -59,6 +62,10 @@ class UserInfoActivity : AppCompatActivity() {
         if(dialogInactiveBooster!= null){
             dialogInactiveBooster?.dismiss()
             dialogInactiveBooster = null
+        }
+        if(dialogInternet!= null){
+            dialogInternet?.dismiss()
+            dialogInternet = null
         }
     }
 
@@ -150,6 +157,69 @@ class UserInfoActivity : AppCompatActivity() {
 
     }
 
+
+
+    private fun setBoosterPorperty(boosterImage:ImageView, boosterActiveUntil:String,boosterQuantity:Int,boosterNum:Int){
+        //onclick check if there is booster in inventory
+        //check if there is active boost and ask if player wants to override it
+        //yes, then reduce the amount of booster
+        //calculate boosterActiveUntil and upload it to firestore, onComplete switch to Mapactivity
+        //boosterActiveUntil will be used in the MapActivity to check if booster is active
+
+        boosterImage.setOnClickListener {view->
+            internetDialog(false){checkBoosterDialog(boosterActiveUntil,boosterQuantity,boosterNum,view)}
+
+        }
+
+    }
+    private fun checkBoosterDialog(boosterActiveUntil:String,boosterQuantity:Int,boosterNum:Int,view: View){
+        if(boosterQuantity>0) {
+            val timeDiff =
+                    //not a newly created account
+                    if (boosterActiveUntil != "") {
+                        //check if there is a booster active
+                        val now = Calendar.getInstance().time
+                        val currentTime = dateFormat.format(now)
+
+                        val boosterTimeUntil2 = dateFormat.parse(boosterActiveUntil)
+                        val currentTime2 = dateFormat.parse(currentTime)
+                        (boosterTimeUntil2.time - currentTime2.time)
+                    } else {
+                        0
+                    }
+
+            if (timeDiff > 0) {
+                //dialog there is a booster active, are you sure you want to override
+                dialogActiveBooster = AlertDialog.Builder(this)
+                        .setTitle("There is an active booster")
+                        .setMessage("Are you sure you want to override the duration of that booster with booster $boosterNum?")
+                        .setPositiveButton("OK") { _, _ ->
+
+                            activateBooster(boosterNum,boosterQuantity)
+
+                        }.setNegativeButton("NO"){ _, _ ->
+
+                        }
+                        .show()
+
+            }else{
+                //dialog: are you sure you want to use the booster?
+                dialogInactiveBooster = AlertDialog.Builder(this)
+                        .setTitle("Activate booster")
+                        .setMessage("Are you sure you want to use booster $boosterNum now?")
+                        .setPositiveButton("OK") { _, _ ->
+
+                            activateBooster(boosterNum,boosterQuantity)
+
+                        }.setNegativeButton("NO"){ _, _ ->
+
+                        }
+                        .show()
+            }
+        }else{
+            Snackbar.make(view, "You do not have any booster $boosterNum", Snackbar.LENGTH_SHORT).show()
+        }
+    }
     private fun activateBooster(boosterNum: Int,boosterQuantity: Int){
         //get the time now again as this time is calculated from onClick of positive button
         val now = Calendar.getInstance().time
@@ -171,63 +241,38 @@ class UserInfoActivity : AppCompatActivity() {
         }
     }
 
-    private fun setBoosterPorperty(boosterImage:ImageView, boosterActiveUntil:String,boosterQuantity:Int,boosterNum:Int){
-        //onclick check if there is booster in inventory
-        //check if there is active boost and ask if player wants to override it
-        //yes, then reduce the amount of booster
-        //calculate boosterActiveUntil and upload it to firestore, onComplete switch to Mapactivity
-        //boosterActiveUntil will be used in the MapActivity to check if booster is active
+    //show dialog when there is no internet,used when UI buttons are pressed
+    private fun internetDialog(reconnect:Boolean,buttonMethod:()->Unit){
+        MapActivity.InternetCheck { internet ->
+            Log.d("Connection", "Is connection enabled? $internet")
+            if (!internet) {
+                dialogInternet = AlertDialog.Builder(this)
+                        .setTitle("No internet connection, your action was NOT saved")
+                        .setMessage("Please turn on internet connection before proceeding")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ ->
 
-        boosterImage.setOnClickListener {view->
-            if(boosterQuantity>0) {
-                val timeDiff =
-                        //not a newly created account
-                        if (boosterActiveUntil != "") {
-                            //check if there is a booster active
-                            val now = Calendar.getInstance().time
-                            val currentTime = dateFormat.format(now)
+                            internetDialog(true,buttonMethod)
 
-                            val boosterTimeUntil2 = dateFormat.parse(boosterActiveUntil)
-                            val currentTime2 = dateFormat.parse(currentTime)
-                            (boosterTimeUntil2.time - currentTime2.time)
-                        } else {
-                            0
+                        }.setNegativeButton("Quit game") { _, _ ->
+                            Log.d(tag, "no internet connection -> game exits")
+                            finishAffinity()
+
                         }
-
-                if (timeDiff > 0) {
-                    //dialog there is a booster active, are you sure you want to override
-                    dialogActiveBooster = AlertDialog.Builder(this)
-                            .setTitle("There is an active booster")
-                            .setMessage("Are you sure you want to override the duration of that booster with booster $boosterNum?")
-                            .setPositiveButton("OK") { _, _ ->
-
-                                activateBooster(boosterNum,boosterQuantity)
-
-                            }.setNegativeButton("NO"){ _, _ ->
-
-                            }
-                            .show()
-
-                }else{
-                    //dialog: are you sure you want to use the booster?
-                    dialogInactiveBooster = AlertDialog.Builder(this)
-                            .setTitle("Activate booster")
-                            .setMessage("Are you sure you want to use booster $boosterNum now?")
-                            .setPositiveButton("OK") { _, _ ->
-
-                                activateBooster(boosterNum,boosterQuantity)
-
-                            }.setNegativeButton("NO"){ _, _ ->
-
-                            }
-                            .show()
-                }
+                        .show()
             }else{
-                Snackbar.make(view, "You do not have any booster $boosterNum", Snackbar.LENGTH_SHORT).show()
+                if(reconnect){
+                    //restart the activity if this is a successful reconnection attempt
+                    Toast.makeText(this, "connection successful", Toast.LENGTH_SHORT).show()
+                    startActivity(intent)
+                    finish()
+                    overridePendingTransition(0, 0)
+                }else{
+                    buttonMethod()
+                }
             }
         }
 
     }
-
 
 }

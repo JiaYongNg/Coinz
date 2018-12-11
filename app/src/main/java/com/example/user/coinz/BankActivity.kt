@@ -14,12 +14,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_bank.*
 
 
-
 class BankActivity : AppCompatActivity() {
 
     private val tag = "BankActivity"
     private var dialogBankIn : Dialog? = null
     private var dialogUsername : Dialog? = null
+    private var dialogInternet : Dialog? = null
 
     private var username = ""
     private var accountId = ""
@@ -73,7 +73,7 @@ class BankActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext,"Please reduce the number of selected non-gifted coins by "
                         + (totalNumberOfBankedInCoins - 25).toString(), Toast.LENGTH_SHORT).show()
             }else{
-                bankIn()
+                internetDialog(false){bankIn()}
             }
         }
 
@@ -82,7 +82,7 @@ class BankActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext,"you need to have exactly 25 banked in coins to start gifting coins",
                         Toast.LENGTH_SHORT).show()
             }else{
-                giftCoin()
+                internetDialog(false){giftCoin()}
             }
         }
         //load achievement and get firestore wallet coins and display collected coins to UI
@@ -112,6 +112,10 @@ class BankActivity : AppCompatActivity() {
             dialogUsername?.dismiss()
             dialogUsername = null
         }
+        if(dialogInternet != null){
+            dialogInternet?.dismiss()
+            dialogInternet = null
+        }
     }
 
     private fun loadAchievement(){
@@ -133,6 +137,7 @@ class BankActivity : AppCompatActivity() {
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
                 usernameEditText.filters = arrayOf<InputFilter>(InputFilter.AllCaps())
+                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(15))
                 usernameEditText.hint = "Enter username here"
                 dialogUsername = AlertDialog.Builder(this)
                         .setTitle("Enter the recipient's username")
@@ -252,6 +257,7 @@ class BankActivity : AppCompatActivity() {
                 ?.addOnSuccessListener { document ->
                     if (document != null) {
                         Log.d(tag, "DocumentSnapshot data: " + document.data)
+                        Log.d(tag,"number of coins in bank = ${document.data?.size}")
                         if (document.data != null || document.data?.isNotEmpty()!!) {
                             for (i in 1..(document.data?.size!!)) {
                                 //coin is used if it is banked in or given to others
@@ -288,7 +294,39 @@ class BankActivity : AppCompatActivity() {
                     Log.e("BankActivity", "get user wallet failed with ", exception)
                 }
     }
+    //show dialog when there is no internet,used when UI buttons are pressed
+    private fun internetDialog(reconnect:Boolean,buttonMethod:()->Unit){
+        MapActivity.InternetCheck { internet ->
+            Log.d("Connection", "Is connection enabled? $internet")
+            if (!internet) {
+                dialogInternet = AlertDialog.Builder(this)
+                        .setTitle("No internet connection, your action was NOT saved")
+                        .setMessage("Please turn on internet connection before proceeding")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ ->
 
+                            internetDialog(true,buttonMethod)
+
+                        }.setNegativeButton("Quit game") { _, _ ->
+                            Log.d(tag, "no internet connection -> game exits")
+                            finishAffinity()
+
+                        }
+                        .show()
+            }else{
+                if(reconnect){
+                    //restart the activity if this is a successful reconnection attempt
+                    Toast.makeText(this, "connection successful", Toast.LENGTH_SHORT).show()
+                    startActivity(intent)
+                    finish()
+                    overridePendingTransition(0, 0)
+                }else{
+                    buttonMethod()
+                }
+            }
+        }
+
+    }
     class CoinInfo(val value:Double, val currency:String, val coinNumInWallet:Int,val coinGiverName :String):Comparable<CoinInfo> {
         //sort by currency(ascending) then by value of coins(descending)
         override fun compareTo(other: CoinInfo): Int {

@@ -1,12 +1,10 @@
 package com.example.user.coinz
 
-
 import android.app.Dialog
 import com.mapbox.geojson.FeatureCollection
 import com.mapbox.geojson.Point
 import com.mapbox.mapboxsdk.annotations.Marker
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
-
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
@@ -30,8 +28,6 @@ import android.support.v7.app.AppCompatActivity
 import android.os.AsyncTask
 import android.util.Log
 
-
-
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.URL
@@ -47,6 +43,7 @@ import android.widget.EditText
 import android.widget.Toast
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.mapbox.mapboxsdk.annotations.IconFactory
@@ -54,6 +51,8 @@ import com.mapbox.mapboxsdk.annotations.IconFactory
 
 import org.json.JSONObject
 import java.lang.ref.WeakReference
+import java.net.InetSocketAddress
+import java.net.Socket
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -92,6 +91,9 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     private var midnightTimer:CountDownTimer? = null
     private var midnightDialog : Dialog? = null
 
+    //check for internet
+    private var dialogInternet : Dialog? = null
+
     //used to determine a situation where home or back button is pressed
     //and calls updateUserInfo method in onPause when this var is false
     private var switchToAnotherActivity = false
@@ -101,9 +103,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
     private var mapView: MapView? = null
     private var map: MapboxMap? = null
-    private lateinit var originLocation : Location
+    private var originLocation : Location? = null
     private lateinit var permissionsManager : PermissionsManager
-    //private lateinit var locationEngine : LocationEngine
     private var locationEngine : LocationEngine?= null
     private lateinit var locationLayerPlugin : LocationLayerPlugin
 
@@ -138,34 +139,51 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
 
         //sets up the four buttons on the Map activity
-        log_out_button.setOnClickListener { logOut() }
-        bank_button.setOnClickListener{ updateUserInfo { bankActivity()} }
-        shop_button.setOnClickListener { updateUserInfo { shopActivity()} }
-        my_profile_button.setOnClickListener { updateUserInfo { userInfoActivity()} }
+        log_out_button.setOnClickListener {
+            logOut()
+        }
+
+        bank_button.setOnClickListener{
+            bank_button.setBackgroundColor(Color.GREEN)
+            updateUserInfo { bankActivity() }
+        }
+
+        shop_button.setOnClickListener {
+            shop_button.setBackgroundColor(Color.GREEN)
+            updateUserInfo { shopActivity() }
+        }
+
+        my_profile_button.setOnClickListener {
+            my_profile_button.setBackgroundColor(Color.GREEN)
+            updateUserInfo { userInfoActivity() }
+        }
 
         firstLoginCheck()
 
     }
 
 
-
-
     private fun userInfoActivity(){
         switchToAnotherActivity = true
+        Log.d(tag,"switching to userInfoActivity")
         val intent = Intent(this, UserInfoActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
         startActivity(intent)
     }
+
     private fun shopActivity(){
         switchToAnotherActivity = true
+        Log.d(tag,"switching to shopActivity")
         val intent = Intent(this, ShopActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
         startActivity(intent)
     }
+
     private fun bankActivity(){
         switchToAnotherActivity = true
+        Log.d(tag,"switching to BankActivity")
         val intent = Intent(this, BankActivity::class.java)
         intent.putExtra("username",username)
         intent.putExtra("accountId",mAuth?.currentUser?.uid!!)
@@ -176,9 +194,20 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         startActivity(intent)
     }
 
-    //used when switching activity or logging out
-    private fun updateUserInfo(innerFunc:() -> Unit){
-        firestoreUserWallet?.update(walletData)?.addOnCompleteListener{
+    //used when switching activity or logging out or quitting the game
+    private fun updateUserInfo(switchActivity:() -> Unit){
+        //check if there is internet connection
+        internetDialog(false)
+
+        //disable all UI buttons until local wallet data is uploaded to firestore
+        //because we need updated wallet data to be displayed in the next Activity's UI
+        //and we don't want the player to spam the UI buttons while they are waiting
+        //which could cause multiple Activity instance of the same type to be created
+        my_profile_button.isClickable = false
+        bank_button.isClickable = false
+        shop_button.isClickable = false
+        log_out_button.isClickable = false
+        firestoreUserWallet?.update(walletData)?.addOnSuccessListener {
             totalCoinCollected += walletData.size
             coinCollectedToday += walletData.size
 
@@ -195,20 +224,27 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                         coinCollectedTodayAchievement
 
             firestoreUserInfo?.update(achievementData)?.addOnCompleteListener {
-                //wait for update to complete before executing innerFunc
-                Log.d(tag,"number of coins in wallet = ${walletData.size}")
+                //wait for update to complete before executing switchActivity()
                 Log.d(tag,"successfully uploaded ${walletData.size} collected coins in this session")
-                DownloadCompleteRunner.numberOfCoinsinWallet += walletData.size
+                firestoreUserWallet?.get()?.addOnSuccessListener {document->
+                    if(document != null){
+                        DownloadCompleteRunner.numberOfCoinsinWallet = document.data?.size!!
+                    }
+                }
+
+                my_profile_button.isClickable = true
+                bank_button.isClickable = true
+                shop_button.isClickable = true
+                log_out_button.isClickable = true
 
                 //reset walletData
                 walletData = HashMap()
                 coinIndexForWallet = 1
-                innerFunc()
+                switchActivity()
             }
 
         }
     }
-
 
     //creates a log Out dialog
     private fun logOut(){
@@ -217,6 +253,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             .setMessage("Are you sure you want to log out?")
             .setPositiveButton("Yes")
             { _, _ ->
+                Log.d(tag,"logging out")
                 updateUserInfo { performLogOut() }
             }
 
@@ -226,6 +263,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             }
             .show()
     }
+
     private fun performLogOut(){
         FirebaseAuth.getInstance().signOut()
         Log.d(tag,"logging out")
@@ -242,43 +280,34 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                    promptUsername()
 
                }else {
-                   getFireStoreUsername()
+                   getFireStoreUsername(document)
                }
             }
         }
     }
+
     //get username and achievement stats of existing player
-    private fun getFireStoreUsername(){
-        firestoreUserInfo?.get()
-            ?.addOnSuccessListener { document ->
-                if (document != null) {
-                    username = document.get("Username").toString()
-                    walletDate = document.get("walletDate").toString()
-                    coinCollectedToday = document.get("Collect # coins in a day tracker").toString().toInt()
-                    coinCollectedTodayAchievement = document.get("Collect # coins in a day").toString().toInt()
-                    totalCoinCollected = document.get("Collect # coins").toString().toInt()
-                    coinWithDoubleVal = document.get("Coin with double value").toString().toInt()
-                    loginStreak = document.get("Login streak").toString().toInt()
-                    booster4Quantity = document.get("Booster 4").toString().toInt()
+    private fun getFireStoreUsername(document:DocumentSnapshot){
 
-                    firestoreUserWallet = firestore?.collection("Users")?.document(username!!)
-                    Log.d(tag, "logged in user's username is $username")
+        username = document.get("Username").toString()
+        walletDate = document.get("walletDate").toString()
+        coinCollectedToday = document.get("Collect # coins in a day tracker").toString().toInt()
+        coinCollectedTodayAchievement = document.get("Collect # coins in a day").toString().toInt()
+        totalCoinCollected = document.get("Collect # coins").toString().toInt()
+        coinWithDoubleVal = document.get("Coin with double value").toString().toInt()
+        loginStreak = document.get("Login streak").toString().toInt()
+        booster4Quantity = document.get("Booster 4").toString().toInt()
 
-                    //need username to check if booster is active
-                    checkBoosterActive()
+        firestoreUserWallet = firestore?.collection("Users")?.document(username!!)
+        Log.d(tag, "logged in user's username is $username")
 
-                    //getMapAsync is in firstLoginCheck because
-                    //I need to know what the username is to load the correct wallet
-                    //and to exclude adding the corresponding coins on the map
-                    mapView?.getMapAsync(this)
+        //need username to check if booster is active
+        checkBoosterActive()
 
-                } else {
-                    Log.d(tag, "Document not found")
-                }
-            }
-            ?.addOnFailureListener { exception ->
-                Log.e(tag, "get username failed with ", exception)
-            }
+        //getMapAsync is in firstLoginCheck because
+        //I need to know what the username is to load the correct wallet
+        //and to exclude adding the corresponding coins on the map
+        mapView?.getMapAsync(this)
     }
 
     //prompt new player to write their username
@@ -292,6 +321,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
                 usernameEditText.filters = arrayOf<InputFilter>(InputFilter.AllCaps())
+                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(15))
                 usernameEditText.hint = "Enter username"
                 dialogUsername = AlertDialog.Builder(this)
                     .setTitle("Add username")
@@ -478,6 +508,10 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             midnightDialog?.dismiss()
             midnightDialog = null
         }
+        if(dialogInternet != null){
+            dialogInternet?.dismiss()
+            dialogInternet = null
+        }
     }
     @SuppressWarnings("MissingPermission")
     override fun onStart(){
@@ -493,6 +527,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
             locationEngine?.addLocationEngineListener(this)
         }
+
     }
 
     override fun onResume()
@@ -504,7 +539,17 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         if(username != ""){
             checkBoosterActive()
         }
+        //countdown to midnight
         midnightCountDown()
+
+        //check if there is internet connection
+        internetDialog(false)
+
+        //reset button colors when coming back to this activity
+        bank_button.setBackgroundColor(android.R.drawable.btn_default)
+        my_profile_button.setBackgroundColor(android.R.drawable.btn_default)
+        shop_button.setBackgroundColor(android.R.drawable.btn_default)
+        log_out_button.setBackgroundColor(android.R.drawable.btn_default)
     }
 
 
@@ -512,16 +557,17 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     {
         super.onPause()
         mapView?.onPause()
-        //if home or back button is pressed
+        //if home or back button is pressed and there are coins that needs to be updated
         if(mAuth?.currentUser != null && coinIndexForWallet != 1 && !switchToAnotherActivity) {
-            updateUserInfo { }
+            updateUserInfo{}
         }else{
             //reset this value
             switchToAnotherActivity = false
         }
-        Log.d(tag,"MAP PAUSE")
+        cancelDialog()
 
     }
+
     override fun onStop()
     {
 
@@ -545,7 +591,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             locationEngine?.deactivate()
         }
         cancelDialog()
-        cancelTimer()
 
     }
     override fun onSaveInstanceState(outState: Bundle?) {
@@ -636,7 +681,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             Log.d(tag, "[onLocationChanged] location is null")
         } else {
             originLocation = location
-            setCameraPosition(originLocation)
+            setCameraPosition(originLocation!!)
         }
     }
 
@@ -672,97 +717,102 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         val coinLocation = Location("")
         coinLocation.latitude = coin.position.latitude
         coinLocation.longitude = coin.position.longitude
-        val distance = originLocation.distanceTo(coinLocation)
+        if(originLocation != null) {
+            val distance = originLocation?.distanceTo(coinLocation)!!
 
-        if(distance <= 25){
-        //if(distance <= 10000){//for testing
-            Toast.makeText(applicationContext,"coin collected",Toast.LENGTH_SHORT).show()
+            if (distance <= 25) {
+                //if(distance <= 10000){//for testing
+                Toast.makeText(applicationContext, "coin collected", Toast.LENGTH_SHORT).show()
 
-            val date = Calendar.getInstance().time
-            val dateFormat = SimpleDateFormat("yyyy/MM/dd")
-            val currentDate = dateFormat.format(date)
+                val date = Calendar.getInstance().time
+                val dateFormat = SimpleDateFormat("yyyy/MM/dd")
+                val currentDate = dateFormat.format(date)
 
 
+                //if this is the first collected coin, then update the userInfo's
+                //walletDate with the current date
+                //check login streak when collecting the first coin of the day as well
+                if (DownloadCompleteRunner.numberOfCoinsinWallet == 0 && walletData.size == 0) {
+                    //check that this is not a newly created account before calculating date difference
+                    if (walletDate != "") {
+                        //perform date calculation to update login streak
+                        val walletDate2 = dateFormat.parse(walletDate)
+                        val currentDate2 = dateFormat.parse(currentDate)
+                        val dateDiff = (currentDate2.time - walletDate2.time) / (1000 * 60 * 60 * 24)
 
-            //if this is the first collected coin, then update the userInfo's
-            //walletDate with the current date
-            //check login streak when collecting the first coin of the day as well
-            if(DownloadCompleteRunner.numberOfCoinsinWallet == 0 && walletData.size == 0){
-                //check that this is not a newly created account before calculating date difference
-                if(walletDate != "") {
-                    //perform date calculation to update login streak
-                    val walletDate2 = dateFormat.parse(walletDate)
-                    val currentDate2 = dateFormat.parse(currentDate)
-                    val dateDiff = (currentDate2.time - walletDate2.time) / (1000 * 60 * 60 * 24)
+                        //login streak increases
+                        //login streak rewards are given here
+                        if (dateDiff.toInt() == 1) {
+                            if (loginStreak in 0..5) {
+                                loginStreak++
+                                coinWithDoubleVal = loginStreak
+                                Toast.makeText(applicationContext, "Login streak is $loginStreak, " +
+                                        "this coin and the next ${coinWithDoubleVal - 1} coin(s) you collect will have doubled value", Toast.LENGTH_LONG).show()
+                            } else {
+                                //day 7 gives a booster
+                                booster4Quantity++
+                                firestoreUserInfo?.update("Booster 4", booster4Quantity)
+                                Toast.makeText(applicationContext, "You gained a booster 4 for achieving 7 day login streak", Toast.LENGTH_LONG).show()
+                                //reset login streak at day 7
+                                loginStreak = 0
+                            }
 
-                    //login streak increases
-                    //login streak rewards are given here
-                    if(dateDiff.toInt() == 1){
-                        if(loginStreak in 0..5){
-                            loginStreak++
-                            coinWithDoubleVal = loginStreak
-                            Toast.makeText(applicationContext,"Login streak is $loginStreak, " +
-                                    "this coin and the next ${coinWithDoubleVal-1} coin(s) you collect will have doubled value",Toast.LENGTH_LONG).show()
-                        }else{
-                            //day 7 gives a booster
-                            booster4Quantity++
-                            firestoreUserInfo?.update("Booster 4",booster4Quantity)
-                            Toast.makeText(applicationContext,"You gained a booster 4 for achieving 7 day login streak",Toast.LENGTH_LONG).show()
-                            //reset login streak at day 7
-                            loginStreak = 0
+                        }//no consecutive login, login streak drops back to 1
+                        else {
+                            Toast.makeText(this, "Login streak is 1, the coin you just collected has doubled value", Toast.LENGTH_LONG).show()
+                            loginStreak = 1
+                            coinWithDoubleVal = 1
                         }
-
-                    }//no consecutive login, login streak drops back to 1
-                    else{
-                        Toast.makeText(this,"Login streak is 1, the coin you just collected has doubled value",Toast.LENGTH_LONG).show()
+                    } else {
+                        //user's first login to an account
+                        Toast.makeText(this, "Welcome to the game!", Toast.LENGTH_LONG).show()
                         loginStreak = 1
                         coinWithDoubleVal = 1
+
                     }
-                }else{
-                    //user's first login to an account
-                    Toast.makeText(this, "Welcome to the game!",Toast.LENGTH_LONG).show()
-                    loginStreak = 1
-                    coinWithDoubleVal = 1
-
+                    firestoreUserInfo?.update("Login streak", loginStreak)
+                    firestoreUserInfo?.update("walletDate", currentDate)
+                    walletDate = currentDate
                 }
-                firestoreUserInfo?.update("Login streak", loginStreak)
-                firestoreUserInfo?.update("walletDate",currentDate)
-                walletDate = currentDate
+
+                //collected coins are stored in a hash map
+                val coinData = HashMap<String, Any>()
+                val valueCurrency = coin.snippet.split(" ")
+                coinData["id"] = coin.title
+
+                var coinValue = valueCurrency[0].toDouble()
+                Log.d(tag, "coin value before multiplier = $coinValue")
+                //login bonus
+                if (coinWithDoubleVal > 0) {
+                    coinValue *= 2
+                    coinWithDoubleVal--
+                }
+                //booster
+                if (boosterActive) {
+                    coinValue *= 1.5
+                }
+                Log.d(tag, "coin vale after multipler = $coinValue")
+
+                coinData["value"] = coinValue
+                coinData["currency"] = valueCurrency[1]
+                coinData["bankedIn"] = false
+                coinData["coinGivenToOthers"] = false
+                coinData["coinGivenByOthers"] = false
+                coinData["coinGiverName"] = ""
+
+                walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinIndexForWallet)}"] = coinData
+                coinIndexForWallet++
+                Log.d(tag, "collected coin's data is " + coinData.toString())
+                map?.removeMarker(coin)
+
+
+            } else {
+                Toast.makeText(applicationContext, "you are " + Math.round(distance).toString()
+                        + "metres away from the coin, get within 25metres to collect the coin", Toast.LENGTH_SHORT).show()
+                Log.d(tag, "coin too far away")
             }
-
-            //collected coins are stored in a hash map
-            val coinData = HashMap<String, Any>()
-            val valueCurrency = coin.snippet.split(" ")
-            coinData["id"] = coin.title
-
-            var coinValue = valueCurrency[0].toDouble()
-            Log.d(tag,"coin value before multiplier = $coinValue")
-            //login bonus
-            if(coinWithDoubleVal>0){
-                coinValue *= 2
-                coinWithDoubleVal--
-            }
-            //booster
-            if(boosterActive){
-                coinValue *= 1.5
-            }
-            Log.d(tag,"coin vale after multipler = $coinValue")
-            coinData["value"] = coinValue
-            coinData["currency"] = valueCurrency[1]
-            coinData["bankedIn"] = false
-            coinData["coinGivenToOthers"] = false
-            coinData["coinGivenByOthers"] = false
-            coinData["coinGiverName"] = ""
-            walletData["coin${(DownloadCompleteRunner.numberOfCoinsinWallet + coinIndexForWallet)}" ] = coinData
-            coinIndexForWallet++
-            Log.d(tag,"collected coin's data is "+coinData.toString())
-            map?.removeMarker(coin)
-
-
         }else{
-            Toast.makeText(applicationContext,"you are "+ Math.round(distance).toString()
-                    +"metres away from the coin, get within 25metres to collect the coin",Toast.LENGTH_SHORT).show()
-            Log.d(tag,"coin too far away")
+            Toast.makeText(this,"turn on location service to collect the coin",Toast.LENGTH_LONG).show()
         }
         return true
     }
@@ -800,7 +850,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         // Write a message to ”logcat” (for debugging purposes)
         Log.d(tag,"Recalled lastDownloadDate is $downloadDate")
 
-        //file that stores the map
         if (downloadDate != currentDate){
             //if dates are diff then download map from server, write geojson file to device and
             //add coins to map/empty wallet in onPostExecute,update downloadDate value
@@ -828,7 +877,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         var result : String? = null
         private var walletCoinId = ArrayList<String>()               //initialised by loadWallettoDevice(), store wallet's coins' id
 
-        var numberOfCoinsinWallet = 0                                //initialised by loadWallettoDevice()
+        var numberOfCoinsinWallet = 0                                //initialised by loadWallettoDevice(),modified during updateUserInfo()
 
         var shil : Double = 0.0                                      //initialised by addCoinsToMap()
         var dolr : Double = 0.0
@@ -853,7 +902,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             firestoreUserWallet?.get()
                 ?.addOnSuccessListener { document ->
                     if (document != null) {
-                        Log.d("MapActivity", "DocumentSnapshot data: " + document.data)
                         numberOfCoinsinWallet = document.data?.size!!
                         if(numberOfCoinsinWallet > 0) {
                             for (i in 1..(document.data?.size!!)) {
@@ -922,7 +970,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
                     return bitmap
                 }
-
+                //set up icon colors
                 fun tintImage(background: Bitmap,number:Bitmap, color: Int): Bitmap {
                     val backgroundPaint = Paint()
                     backgroundPaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
@@ -957,6 +1005,10 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                     10 -> markerNumber = R.drawable.marker_10
                 }
                 var backgroundColor = 0
+                //red       = PENY
+                //green     = DOLR
+                //yellow    = QUID
+                //blue      = SHIL
                 when(colorVal){
                     255 -> backgroundColor = Color.BLUE
                     32768 -> backgroundColor = Color.GREEN
@@ -985,7 +1037,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 }
 
             }
-            //total sums up to 50
+            //total sums up to 50, assuming no gifted coins in wallet
             Log.d("MapActivity","coinsOnMap = " + coinOnMapNumber.toString()
                     + ", coinsInWallet "  + numberOfCoinsinWallet.toString())
         }
@@ -999,7 +1051,8 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 try {
                     loadFileFromNetwork(urls[0])
                 } catch (e: IOException) {
-                    "Unable to load content. Check your network connection"
+                    Log.e("MapActivity","Unable to load content. Check your network connection")
+                    ""
                 }
 
 
@@ -1029,24 +1082,85 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
         override fun onPostExecute(result: String) {
             super.onPostExecute(result)
-            caller.downloadComplete(result)
+            //if there is internet connection, then downloaded geojson map is valid, so add it to internal storage
+            if(result.isNotEmpty()) {
+                caller.downloadComplete(result)
 
-            //write downloaded json file to device
-            val file = File("/data/data/com.example.user.coinz/files","coinzmap.geojson")
-            file.writeText(DownloadCompleteRunner.result!!)
+                //write downloaded json file to device
+                val file = File("/data/data/com.example.user.coinz/files", "coinzmap.geojson")
+                file.writeText(DownloadCompleteRunner.result!!)
 
-            //before adding coins to the map, check if the wallet's coins are collected today or not
-            //if collected today, load the wallet to device, else empty the wallet as coins only last
-            //until the end of the day
-            if(walletDate != currentDate){
-                caller.emptyWallet(firestoreUserWallet)
-                caller.addCoinstoMap(map,context.get()!!)
+                //before adding coins to the map, check if the wallet's coins are collected today or not
+                //if collected today, load the wallet to device, else empty the wallet as coins only last
+                //until the end of the day
+                if (walletDate != currentDate) {
+                    caller.emptyWallet(firestoreUserWallet)
+                    caller.addCoinstoMap(map, context.get()!!)
+                } else {
+                    caller.loadWalletAddCoins(firestoreUserWallet, map, context.get()!!)
+                }
             }else{
-                caller.loadWalletAddCoins(firestoreUserWallet,map,context.get()!!)
+                Log.e("MapActivity","geojson map download failed")
             }
 
         }
 
     } // end class DownloadFileTask
+
+
+
+    //check if there is internet connection
+    internal class InternetCheck(private val onInternetChecked: (Boolean) -> Unit) :
+            AsyncTask<Void, Void, Boolean>() {
+        init {
+            execute()
+        }
+
+        override fun doInBackground(vararg voids: Void): Boolean {
+            return try {
+                val sock = Socket()
+                sock.connect(InetSocketAddress("8.8.8.8", 53), 1500)
+                sock.close()
+                true
+            } catch (e: IOException) {
+                false
+            }
+
+        }
+
+        override fun onPostExecute(internet: Boolean) {
+            onInternetChecked(internet)
+
+        }
+    }
+
+    //show dialog when there is no internet, used when UI buttons are pressed
+    private fun internetDialog(reconnect:Boolean){
+        InternetCheck{internet->
+            Log.d("Connection", "Is connection enabled? $internet")
+            if(!internet){
+                dialogInternet = AlertDialog.Builder(this)
+                        .setTitle("No internet connection, your progress was saved")
+                        .setMessage("Please turn on internet connection before proceeding")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ ->
+
+                            internetDialog(true)
+
+                        }.setNegativeButton("Quit game"){ _, _ ->
+                            Log.d(tag,"no internet connection -> game exits")
+                            finish()
+
+                        }
+                        .show()
+            }else{
+                if(reconnect){
+                    Toast.makeText(this,"connection successful",Toast.LENGTH_SHORT).show()
+
+                }
+            }
+        }
+
+    }
 
 }

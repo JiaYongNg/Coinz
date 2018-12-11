@@ -12,12 +12,15 @@ import android.widget.Toast
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_shop.*
+import android.text.InputFilter
+
 
 
 class ShopActivity : AppCompatActivity() {
 
     private val tag = "BankActivity"
     private var dialogBuyBooster : Dialog? = null
+    private var dialogInternet : Dialog? = null
 
     private var username = ""
     private var accountId = ""
@@ -36,7 +39,7 @@ class ShopActivity : AppCompatActivity() {
 
         buy_button.setOnClickListener {
             if(selectedBoosterNumber != 0){
-                buyBooster()
+                internetDialog(false){ buyBooster()}
             }else{
                 Toast.makeText(applicationContext,"Please select a booster to buy",Toast.LENGTH_SHORT).show()
             }
@@ -46,7 +49,6 @@ class ShopActivity : AppCompatActivity() {
         booster_2_image.setOnClickListener { selectBooster(2) }
         booster_3_image.setOnClickListener { selectBooster(3) }
         booster_4_image.setOnClickListener { selectBooster(4) }
-
     }
 
 
@@ -55,6 +57,10 @@ class ShopActivity : AppCompatActivity() {
         if(dialogBuyBooster != null){
             dialogBuyBooster?.dismiss()
             dialogBuyBooster = null
+        }
+        if(dialogInternet != null){
+            dialogInternet?.dismiss()
+            dialogInternet = null
         }
     }
 
@@ -73,6 +79,7 @@ class ShopActivity : AppCompatActivity() {
         selectedBoosterNumber = boosterNum
 
     }
+
     private fun buyBooster(){
         firestoreUserInfo?.get()?.addOnSuccessListener { document ->
             if (document != null) {
@@ -87,6 +94,7 @@ class ShopActivity : AppCompatActivity() {
                 //the quantity is an int
                 val quantityEditText = EditText(this)
                 quantityEditText.inputType = InputType.TYPE_CLASS_NUMBER
+                quantityEditText.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(4))
                 quantityEditText.hint = "Enter quantity here"
 
                 dialogBuyBooster = AlertDialog.Builder(this)
@@ -127,5 +135,39 @@ class ShopActivity : AppCompatActivity() {
                 Log.e(tag, "No such document")
             }
         }
+    }
+
+    //show dialog when there is no internet,used when UI buttons are pressed
+    private fun internetDialog(reconnect:Boolean,buttonMethod:()->Unit){
+        MapActivity.InternetCheck { internet ->
+            Log.d("Connection", "Is connection enabled? $internet")
+            if (!internet) {
+                dialogInternet = AlertDialog.Builder(this)
+                        .setTitle("No internet connection, your action was NOT saved")
+                        .setMessage("Please turn on internet connection before proceeding")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ ->
+
+                            internetDialog(true,buttonMethod)
+
+                        }.setNegativeButton("Quit game") { _, _ ->
+                            Log.d(tag, "no internet connection -> game exits")
+                            finishAffinity()
+
+                        }
+                        .show()
+            }else{
+                if(reconnect){
+                    //restart the activity if this is a successful reconnection attempt
+                    Toast.makeText(this, "connection successful", Toast.LENGTH_SHORT).show()
+                    startActivity(intent)
+                    finish()
+                    overridePendingTransition(0, 0)
+                }else{
+                    buttonMethod()
+                }
+            }
+        }
+
     }
 }

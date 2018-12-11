@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.example.user.coinz">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -12,7 +13,9 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        tools:ignore="GoogleAppIndexingWarning"
+        android:fullBackupContent="">
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
@@ -27,7 +30,7 @@
         <activity android:name=".RegistrationActivity" />
         <activity android:name=".BankActivity" />
         <activity android:name=".ShopActivity" />
-        <activity android:name=".UserInfoActivity"></activity>
+        <activity android:name=".UserInfoActivity"/>
     </application>
 
 </manifest>
