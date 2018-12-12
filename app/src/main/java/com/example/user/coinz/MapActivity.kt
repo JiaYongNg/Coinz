@@ -850,6 +850,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         // Write a message to ”logcat” (for debugging purposes)
         Log.d(tag,"Recalled lastDownloadDate is $downloadDate")
 
+        downloadDate = "a"
         if (downloadDate != currentDate){
             //if dates are diff then download map from server, write geojson file to device and
             //add coins to map/empty wallet in onPostExecute,update downloadDate value
@@ -921,6 +922,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         override fun addCoinstoMap(map:MapboxMap?,context:Context){
             val coinzMap = File(context.filesDir, "coinzmap.geojson")
             val mapContents = coinzMap.readText()
+            result = mapContents
             val fc = FeatureCollection.fromJson(mapContents)
 
             //initialise rates
@@ -1157,7 +1159,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 if(reconnect){
                     Toast.makeText(this,"connection successful",Toast.LENGTH_SHORT).show()
 
+                    if(DownloadCompleteRunner.result.isNullOrEmpty()){
+                        //redownload map if geojson map download failed
+                        downloadJSONMapandAddCoinsToMap(map)
+                    }
+
                 }
+
             }
         }
 
