@@ -45,7 +45,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.mapbox.mapboxsdk.annotations.IconFactory
 
 
@@ -131,10 +130,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         mAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
-        val settings = FirebaseFirestoreSettings.Builder()
-                .setTimestampsInSnapshotsEnabled(true)
-                .build()
-        firestore?.firestoreSettings = settings
         firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
 
@@ -159,7 +154,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         }
 
         firstLoginCheck()
-
     }
 
 
@@ -320,8 +314,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
-                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.AllCaps())
-                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(15))
+                usernameEditText.filters = arrayOf(InputFilter.AllCaps() ,InputFilter.LengthFilter(15))
                 usernameEditText.hint = "Enter username"
                 dialogUsername = AlertDialog.Builder(this)
                     .setTitle("Add username")
@@ -850,7 +843,6 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         // Write a message to ”logcat” (for debugging purposes)
         Log.d(tag,"Recalled lastDownloadDate is $downloadDate")
 
-        downloadDate = "a"
         if (downloadDate != currentDate){
             //if dates are diff then download map from server, write geojson file to device and
             //add coins to map/empty wallet in onPostExecute,update downloadDate value

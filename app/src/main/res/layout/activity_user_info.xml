@@ -79,11 +79,11 @@
         android:id="@+id/booster_1_image"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:contentDescription="@string/booster_1_image"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/booster_2_image"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/booster_1"
-        android:contentDescription="@string/booster_1_image" />
+        app:srcCompat="@drawable/booster_1" />
 
     <ImageView
         android:id="@+id/booster_2_image"
@@ -133,11 +133,10 @@
         android:id="@+id/booster_1_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
         android:text="@string/x0"
         app:layout_constraintBottom_toBottomOf="@+id/booster_1_image"
         app:layout_constraintEnd_toStartOf="@+id/booster_2_image"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="@+id/booster_1_image" />
 
     <TextView
         android:id="@+id/booster_2_text"

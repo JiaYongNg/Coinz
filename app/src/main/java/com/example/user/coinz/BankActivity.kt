@@ -95,9 +95,12 @@ class BankActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         //update achievement
-        firestoreUserInfo?.update("Net worth", netWorth)
-        firestoreUserInfo?.update("Coin giver", coinGiven)
-        firestoreUserInfo?.update("Coin getter", coinGotten)
+        val achievementData = java.util.HashMap<String, Any>()
+        achievementData["Net worth"] = netWorth
+        achievementData["Coin giver"] = coinGiven
+        achievementData["Coin getter"] = coinGotten
+        firestoreUserInfo?.update(achievementData)
+
     }
 
 
@@ -136,8 +139,7 @@ class BankActivity : AppCompatActivity() {
 
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
-                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.AllCaps())
-                usernameEditText.filters = arrayOf<InputFilter>(InputFilter.LengthFilter(15))
+                usernameEditText.filters = arrayOf(InputFilter.AllCaps(),InputFilter.LengthFilter(15))
                 usernameEditText.hint = "Enter username here"
                 dialogUsername = AlertDialog.Builder(this)
                         .setTitle("Enter the recipient's username")
