@@ -32,7 +32,7 @@ class UserInfoActivity : AppCompatActivity() {
     private var accountId = ""
 
     @SuppressLint("SimpleDateFormat")
-    private val dateFormat = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
+    private val dateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
 
     private var firestore: FirebaseFirestore? = null
     private var firestoreUserInfo: DocumentReference? = null

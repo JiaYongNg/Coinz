@@ -53,15 +53,16 @@ class RegistrationActivity : AppCompatActivity() {
             return
         }
 
+        if (password.isEmpty()) {
+            Toast.makeText(this, "Please enter password", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         if(!password.matches(Regex("[A-Za-z0-9]+"))){
             Toast.makeText(this, "password must be alphanumeric", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (password.isEmpty()) {
-            Toast.makeText(this, "Please enter password", Toast.LENGTH_SHORT).show()
-            return
-        }
         if (password.length < 8) {
             Toast.makeText(this, "Password must be at least 8 characters long", Toast.LENGTH_SHORT).show()
             return

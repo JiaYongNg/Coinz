@@ -394,7 +394,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 //check that it is not a newly created account
                 if (boosterTimeUntil != "") {
                     val now = Calendar.getInstance().time
-                    val dateFormat = SimpleDateFormat("yyyy/MM/dd hh:mm:ss")
+                    val dateFormat = SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
                     val currentTime = dateFormat.format(now)
                     val currentTime2 = dateFormat.parse(currentTime)
 
@@ -470,6 +470,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 .setMessage("The app will restart to load today's new map")
                 .setCancelable(false)
                 .setPositiveButton("Confirm") { _, _ ->
+                    val intent = Intent(this,MainActivity::class.java)
                     startActivity(intent)
                     finish()
                     overridePendingTransition(0, 0)
