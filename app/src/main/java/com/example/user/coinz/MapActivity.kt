@@ -130,7 +130,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
         mAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
 
-        firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
+        firestoreUsernames = firestore?.collection("Users")?.document("UsernamesDatabase")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
 
         //sets up the four buttons on the Map activity
@@ -314,7 +314,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
-                usernameEditText.filters = arrayOf(InputFilter.AllCaps() ,InputFilter.LengthFilter(15))
+                usernameEditText.filters = arrayOf(InputFilter.AllCaps() ,InputFilter.LengthFilter(16))
                 usernameEditText.hint = "Enter username"
                 dialogUsername = AlertDialog.Builder(this)
                     .setTitle("Add username")

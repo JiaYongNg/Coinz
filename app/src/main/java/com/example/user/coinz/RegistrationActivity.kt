@@ -73,7 +73,7 @@ class RegistrationActivity : AppCompatActivity() {
         // Firebase Authentication to create a user with email and password
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password).addOnCompleteListener {
             if (it.isSuccessful) {
-                //show successful registration message, add username to firestore, then switch to login activity
+                //show successful registration message, then switch to login activity
                 Toast.makeText(this, "createUserWithEmail:onComplete:" + it.isSuccessful, Toast.LENGTH_SHORT).show()
                 Log.d(tag, "Successfully created user with uid: ${it.result?.user?.uid}")
 

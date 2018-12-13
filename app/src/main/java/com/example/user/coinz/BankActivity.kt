@@ -55,7 +55,7 @@ class BankActivity : AppCompatActivity() {
         peny = intent.getDoubleExtra("PENY",0.0)
         quid = intent.getDoubleExtra("QUID",0.0)
         shil = intent.getDoubleExtra("SHIL",0.0)
-        firestoreUsernames = firestore?.collection("Users")?.document("Usernames")
+        firestoreUsernames = firestore?.collection("Users")?.document("UsernamesDatabase")
         firestoreUserInfo = firestore?.collection("Users")?.document(accountId)
         firestoreUserWallet = firestore?.collection("Users")?.document(username)
 
@@ -139,7 +139,7 @@ class BankActivity : AppCompatActivity() {
 
                 //the username is all CAPS
                 val usernameEditText = EditText(this)
-                usernameEditText.filters = arrayOf(InputFilter.AllCaps(),InputFilter.LengthFilter(15))
+                usernameEditText.filters = arrayOf(InputFilter.AllCaps(),InputFilter.LengthFilter(16))
                 usernameEditText.hint = "Enter username here"
                 dialogUsername = AlertDialog.Builder(this)
                         .setTitle("Enter the recipient's username")
