@@ -221,7 +221,7 @@ class UserInfoActivity : AppCompatActivity() {
         }
     }
     private fun activateBooster(boosterNum: Int,boosterQuantity: Int){
-        //get the time now again as this time is calculated from onClick of positive button
+        //get the time now again as this time is calculated from onClick of positive button of alert dialog
         val now = Calendar.getInstance().time
         val currentTime = dateFormat.format(now)
         val currentTime2 = dateFormat.parse(currentTime)

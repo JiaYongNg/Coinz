@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_bank.*
+import java.util.HashMap
 
 
 class BankActivity : AppCompatActivity() {
@@ -70,7 +71,7 @@ class BankActivity : AppCompatActivity() {
             }
             val totalNumberOfBankedInCoins = numberOfBankedInCoins + selectedCoinList.size - giftedCoins
             if(totalNumberOfBankedInCoins > 25){
-                Toast.makeText(applicationContext,"Please reduce the number of selected non-gifted coins by "
+                Toast.makeText(this,"Please reduce the number of selected non-gifted coins by "
                         + (totalNumberOfBankedInCoins - 25).toString(), Toast.LENGTH_SHORT).show()
             }else{
                 internetDialog(false){bankIn()}
@@ -79,7 +80,7 @@ class BankActivity : AppCompatActivity() {
 
         give_coin_button.setOnClickListener{
             if(numberOfBankedInCoins != 25){
-                Toast.makeText(applicationContext,"you need to have exactly 25 banked in coins to start gifting coins",
+                Toast.makeText(this,"you need to have exactly 25 banked in coins to start gifting coins",
                         Toast.LENGTH_SHORT).show()
             }else{
                 internetDialog(false){giftCoin()}
@@ -95,7 +96,7 @@ class BankActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         //update achievement
-        val achievementData = java.util.HashMap<String, Any>()
+        val achievementData = HashMap<String, Any>()
         achievementData["Net worth"] = netWorth
         achievementData["Coin giver"] = coinGiven
         achievementData["Coin getter"] = coinGotten
@@ -137,7 +138,7 @@ class BankActivity : AppCompatActivity() {
 
                 var usernameValid = false
 
-                //the username is all CAPS
+                //the username is all CAPS and can be a maximum of 16 characters long
                 val usernameEditText = EditText(this)
                 usernameEditText.filters = arrayOf(InputFilter.AllCaps(),InputFilter.LengthFilter(16))
                 usernameEditText.hint = "Enter username here"
@@ -192,13 +193,13 @@ class BankActivity : AppCompatActivity() {
                                             coinList = ArrayList()
                                             coinGivenByOthers = ArrayList()
                                             collectedCoinList = ArrayList()
-                                            numberOfBankedInCoins = 0
+                                            numberOfBankedInCoins = 0  //recalculated in getCoins()
                                             getCoins()
                                         }
 
                                 }
                             }else{
-                                Toast.makeText(applicationContext,"Username invalid",Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this,"Username invalid",Toast.LENGTH_SHORT).show()
                             }
 
                         }
@@ -259,7 +260,7 @@ class BankActivity : AppCompatActivity() {
                 ?.addOnSuccessListener { document ->
                     if (document != null) {
                         Log.d(tag, "DocumentSnapshot data: " + document.data)
-                        Log.d(tag,"number of coins in bank = ${document.data?.size}")
+                        Log.d(tag,"number of coins in wallet = ${document.data?.size}")
                         if (document.data != null || document.data?.isNotEmpty()!!) {
                             for (i in 1..(document.data?.size!!)) {
                                 //coin is used if it is banked in or given to others

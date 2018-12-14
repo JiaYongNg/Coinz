@@ -48,10 +48,10 @@ class BankAdapter(private var coinList:ArrayList<BankActivity.CoinInfo>, private
                 holder.view.coin_text_view.setBackgroundColor(Color.WHITE)
             }
             Log.d("Bank Activity","coin selected = ${selectedCoinList.size}")
-            Log.d("BankActivity", "selected " + coinList[position].value.toString() + currentCoin.currency)
+            Log.d("BankActivity", "selected " + currentCoin.value.toString() + currentCoin.currency)
         }
 
-        //by default, colour highlights are as follow
+        //by default, if the user is just scrolling around the recycler view, colour highlights are as follow
         if(selectedCoinList.contains(currentCoin)){
             holder.view.coin_text_view.setBackgroundColor(Color.GREEN)
         }else{

@@ -41,7 +41,7 @@ class ShopActivity : AppCompatActivity() {
             if(selectedBoosterNumber != 0){
                 internetDialog(false){ buyBooster()}
             }else{
-                Toast.makeText(applicationContext,"Please select a booster to buy",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this,"Please select a booster to buy",Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -116,13 +116,13 @@ class ShopActivity : AppCompatActivity() {
                                     firestoreUserInfo?.update("Net worth", (netWorth - totalCost))
                                             ?.addOnSuccessListener {
                                                 firestoreUserInfo?.update("Booster $selectedBoosterNumber", (storageQuantity + quantity))
-                                                Toast.makeText(applicationContext, "Your purchase of $quantity booster $selectedBoosterNumber is successful",
+                                                Toast.makeText(this, "Your purchase of $quantity booster $selectedBoosterNumber is successful",
                                                         Toast.LENGTH_LONG).show()
                                             }
 
                                 } else {
                                     //purchase failed
-                                    Toast.makeText(applicationContext, "Purchase failed,you were short of " +
+                                    Toast.makeText(this, "Purchase failed,you were short of " +
                                             "${Math.round(totalCost - netWorth)} gold to make the purchase", Toast.LENGTH_LONG).show()
                                 }
                             }else{

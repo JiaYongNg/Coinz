@@ -45,6 +45,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FirebaseFirestoreSettings
 import com.mapbox.mapboxsdk.annotations.IconFactory
 
 
@@ -129,6 +130,11 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
         mAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
+
+        val settings = FirebaseFirestoreSettings.Builder()
+                .setTimestampsInSnapshotsEnabled(true)
+                .build()
+        firestore?.firestoreSettings = settings
 
         firestoreUsernames = firestore?.collection("Users")?.document("UsernamesDatabase")
         firestoreUserInfo = firestore?.collection("Users")?.document(mAuth?.currentUser?.uid!!)
@@ -336,7 +342,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                         }
                         //username is not valid
                         if(usernameTaken || usernameInvalid){
-                            Toast.makeText(applicationContext,"username taken or invalid",Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this,"username taken or invalid",Toast.LENGTH_SHORT).show()
                             Log.d(tag,"username taken or invalid")
                             promptUsername()
 
@@ -371,7 +377,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                             firestoreUserWallet?.set(emptyData)
 
                             mapView?.getMapAsync(this)
-                            Toast.makeText(applicationContext,"username registered",Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this,"username registered",Toast.LENGTH_SHORT).show()
                             Log.d(tag,"username registered")
                         }
 
@@ -691,7 +697,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
     override fun onExplanationNeeded(permissionsToExplain : MutableList<String>?) {
         Log.d(tag, "Permissions: $permissionsToExplain")
         // Present popup message or dialog
-        Toast.makeText(applicationContext,"Coinz needs location access to be playable",Toast.LENGTH_LONG).show()
+        Toast.makeText(this,"Coinz needs location access to be playable",Toast.LENGTH_LONG).show()
     }
 
     override fun onPermissionResult(granted: Boolean) {
@@ -700,7 +706,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
             enableLocation()
         } else {
             // Open a dialogue with the user
-            Toast.makeText(applicationContext,"Permission denied",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,"Permission denied",Toast.LENGTH_SHORT).show()
             finish()
         }
     }
@@ -716,7 +722,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
             if (distance <= 25) {
                 //if(distance <= 10000){//for testing
-                Toast.makeText(applicationContext, "coin collected", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "coin collected", Toast.LENGTH_SHORT).show()
 
                 val date = Calendar.getInstance().time
                 val dateFormat = SimpleDateFormat("yyyy/MM/dd")
@@ -740,13 +746,13 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                             if (loginStreak in 0..5) {
                                 loginStreak++
                                 coinWithDoubleVal = loginStreak
-                                Toast.makeText(applicationContext, "Login streak is $loginStreak, " +
+                                Toast.makeText(this, "Login streak is $loginStreak, " +
                                         "this coin and the next ${coinWithDoubleVal - 1} coin(s) you collect will have doubled value", Toast.LENGTH_LONG).show()
                             } else {
                                 //day 7 gives a booster
                                 booster4Quantity++
                                 firestoreUserInfo?.update("Booster 4", booster4Quantity)
-                                Toast.makeText(applicationContext, "You gained a booster 4 for achieving 7 day login streak", Toast.LENGTH_LONG).show()
+                                Toast.makeText(this, "You gained a booster 4 for achieving 7 day login streak", Toast.LENGTH_LONG).show()
                                 //reset login streak at day 7
                                 loginStreak = 0
                             }
@@ -785,7 +791,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                 if (boosterActive) {
                     coinValue *= 1.5
                 }
-                Log.d(tag, "coin vale after multipler = $coinValue")
+                Log.d(tag, "coin value after multipler = $coinValue")
 
                 coinData["value"] = coinValue
                 coinData["currency"] = valueCurrency[1]
@@ -801,7 +807,7 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
 
 
             } else {
-                Toast.makeText(applicationContext, "you are " + Math.round(distance).toString()
+                Toast.makeText(this, "you are " + Math.round(distance).toString()
                         + "metres away from the coin, get within 25metres to collect the coin", Toast.LENGTH_SHORT).show()
                 Log.d(tag, "coin too far away")
             }
@@ -952,74 +958,74 @@ class MapActivity : AppCompatActivity(), OnMapReadyCallback, LocationEngineListe
                         }
                     }
                 }
-
-                //set up marker icons
-                fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
-                    val drawable = ContextCompat.getDrawable(context, drawableId)
-
-                    val bitmap = Bitmap.createBitmap(drawable!!.intrinsicWidth,
-                            drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
-                    val canvas = Canvas(bitmap)
-                    drawable.setBounds(0, 0, canvas.width, canvas.height)
-                    drawable.draw(canvas)
-
-                    return bitmap
-                }
-                //set up icon colors
-                fun tintImage(background: Bitmap,number:Bitmap, color: Int): Bitmap {
-                    val backgroundPaint = Paint()
-                    backgroundPaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
-                    val bitmapResult = Bitmap.createBitmap(background.width, background.height, Bitmap.Config.ARGB_8888)
-                    val canvas = Canvas(bitmapResult)
-                    canvas.drawBitmap(background, 0f, 0f, backgroundPaint)
-
-
-                    val numberPaint = Paint()
-                    if(color == Color.YELLOW || color == Color.GREEN){
-                        numberPaint.colorFilter = PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN)
-                    }else{
-                        numberPaint.colorFilter = PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
-                    }
-                    canvas.drawBitmap(number,0f,0f,numberPaint)
-
-
-                    return bitmapResult
-                }
-
-
-                var markerNumber:Int = R.drawable.marker_1
-                when (symbol) {
-                    2 -> markerNumber = R.drawable.marker_2
-                    3 -> markerNumber = R.drawable.marker_3
-                    4 -> markerNumber = R.drawable.marker_4
-                    5 -> markerNumber = R.drawable.marker_5
-                    6 -> markerNumber = R.drawable.marker_6
-                    7 -> markerNumber = R.drawable.marker_7
-                    8 -> markerNumber = R.drawable.marker_8
-                    9 -> markerNumber = R.drawable.marker_9
-                    10 -> markerNumber = R.drawable.marker_10
-                }
-                var backgroundColor = 0
-                //red       = PENY
-                //green     = DOLR
-                //yellow    = QUID
-                //blue      = SHIL
-                when(colorVal){
-                    255 -> backgroundColor = Color.BLUE
-                    32768 -> backgroundColor = Color.GREEN
-                    16711680 -> backgroundColor = Color.RED
-                    16768768 -> backgroundColor = Color.YELLOW
-                }
-
-                val iconFactory = IconFactory.getInstance(context)
-                val background = getBitmapFromVectorDrawable(context,R.drawable.marker_background)
-                val number = getBitmapFromVectorDrawable(context,markerNumber)
-
-                val marker = tintImage(background,number,backgroundColor)
-                val icon = iconFactory.fromBitmap(marker)
-
-
                 if(coinNotOnMap || numberOfCoinsinWallet == 0) {
+                    //set up marker icons
+                    fun getBitmapFromVectorDrawable(context: Context, drawableId: Int): Bitmap {
+                        val drawable = ContextCompat.getDrawable(context, drawableId)
+
+                        val bitmap = Bitmap.createBitmap(drawable!!.intrinsicWidth,
+                                drawable.intrinsicHeight, Bitmap.Config.ARGB_8888)
+                        val canvas = Canvas(bitmap)
+                        drawable.setBounds(0, 0, canvas.width, canvas.height)
+                        drawable.draw(canvas)
+
+                        return bitmap
+                    }
+                    //set up icon colors
+                    fun tintImage(background: Bitmap,number:Bitmap, color: Int): Bitmap {
+                        val backgroundPaint = Paint()
+                        backgroundPaint.colorFilter = PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN)
+                        val bitmapResult = Bitmap.createBitmap(background.width, background.height, Bitmap.Config.ARGB_8888)
+                        val canvas = Canvas(bitmapResult)
+                        canvas.drawBitmap(background, 0f, 0f, backgroundPaint)
+
+
+                        val numberPaint = Paint()
+                        if(color == Color.YELLOW || color == Color.GREEN){
+                            numberPaint.colorFilter = PorterDuffColorFilter(Color.BLACK, PorterDuff.Mode.SRC_IN)
+                        }else{
+                            numberPaint.colorFilter = PorterDuffColorFilter(Color.WHITE, PorterDuff.Mode.SRC_IN)
+                        }
+                        canvas.drawBitmap(number,0f,0f,numberPaint)
+
+
+                        return bitmapResult
+                    }
+
+
+                    var markerNumber:Int = R.drawable.marker_1
+                    when (symbol) {
+                        2 -> markerNumber = R.drawable.marker_2
+                        3 -> markerNumber = R.drawable.marker_3
+                        4 -> markerNumber = R.drawable.marker_4
+                        5 -> markerNumber = R.drawable.marker_5
+                        6 -> markerNumber = R.drawable.marker_6
+                        7 -> markerNumber = R.drawable.marker_7
+                        8 -> markerNumber = R.drawable.marker_8
+                        9 -> markerNumber = R.drawable.marker_9
+                        10 -> markerNumber = R.drawable.marker_10
+                    }
+                    var backgroundColor = 0
+                    //red       = PENY
+                    //green     = DOLR
+                    //yellow    = QUID
+                    //blue      = SHIL
+                    when(colorVal){
+                        255 -> backgroundColor = Color.BLUE
+                        32768 -> backgroundColor = Color.GREEN
+                        16711680 -> backgroundColor = Color.RED
+                        16768768 -> backgroundColor = Color.YELLOW
+                    }
+
+                    val iconFactory = IconFactory.getInstance(context)
+                    val background = getBitmapFromVectorDrawable(context,R.drawable.marker_background)
+                    val number = getBitmapFromVectorDrawable(context,markerNumber)
+
+                    val marker = tintImage(background,number,backgroundColor)
+                    val icon = iconFactory.fromBitmap(marker)
+
+
+
                     //add coins to map
                     map?.addMarker(MarkerOptions()
                             .title(id)

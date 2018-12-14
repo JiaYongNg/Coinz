@@ -26,9 +26,7 @@ class MainActivity : AppCompatActivity(){
 
         }
         create_account_textview.setOnClickListener{
-            Log.d(tag, "login successful")
 
-            // launch the login activity somehow
             val intent = Intent(this, RegistrationActivity::class.java)
             startActivity(intent)
 
@@ -40,7 +38,7 @@ class MainActivity : AppCompatActivity(){
     override fun onStart()
     {
         super.onStart()
-        // Check if user is signed in (non-null) and update UI accordingly.
+        // Check if user is signed in (non-null) and go to MapActivity if the user is signed in.
         if (mAuth?.currentUser != null) {
             Log.d(tag,"already signed in")
 
@@ -77,8 +75,7 @@ class MainActivity : AppCompatActivity(){
         }
         FirebaseAuth.getInstance().signInWithEmailAndPassword(email, password).addOnCompleteListener {
             // If sign in fails, display a message to the user. If sign in succeeds
-            // the auth state listener will be notified and logic to handle the
-            // signed in user can be handled in the listener.
+            // go to MapActivity
             if (!it.isSuccessful) {
                 // there was an error
                 if (password.length< 8) {
